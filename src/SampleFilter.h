@@ -28,12 +28,12 @@ sampling frequency: 8000 Hz
 #define SAMPLEFILTER_TAP_NUM 61
 
 typedef struct {
-  double history[SAMPLEFILTER_TAP_NUM];
-  unsigned int last_index;
+	double history[SAMPLEFILTER_TAP_NUM];
+	unsigned int last_index;
 } SampleFilter;
 
-void SampleFilter_init(SampleFilter *f);
-void SampleFilter_put(SampleFilter *f, double input);
-double SampleFilter_get(SampleFilter *f);
+void SampleFilter_init(SampleFilter* f);
+void SampleFilter_put(SampleFilter* f, double input);
+double SampleFilter_get(SampleFilter* f);
 
 #endif

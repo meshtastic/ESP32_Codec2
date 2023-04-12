@@ -26,21 +26,21 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "defines.h"
 #include "dump.h"
-#include "kiss_fft.h"
+#include "quantise.h"
 #include "lpc.h"
 #include "lsp.h"
-#include "quantise.h"
+#include "kiss_fft.h"
 #undef PROFILE
 #include "machdep.h"
 
-#define LSP_DELTA1 0.01 /* grid spacing for LSP root searches */
+#define LSP_DELTA1 0.01         /* grid spacing for LSP root searches */
 
 /*---------------------------------------------------------------------------*\
 
@@ -48,8 +48,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-float speech_to_uq_lsps(float lsp[], float ak[], float Sn[], float w[],
-                        int order);
+float speech_to_uq_lsps(float lsp[], float ak[], float Sn[], float w[],	int order);
 
 /*---------------------------------------------------------------------------*\
 
@@ -57,21 +56,33 @@ float speech_to_uq_lsps(float lsp[], float ak[], float Sn[], float w[],
 
 \*---------------------------------------------------------------------------*/
 
-int lsp_bits(int i) { return lsp_cb[i].log2m; }
+int lsp_bits(int i) {
+    return lsp_cb[i].log2m;
+}
 
-int lspd_bits(int i) { return lsp_cbd[i].log2m; }
+int lspd_bits(int i) {
+    return lsp_cbd[i].log2m;
+}
 
 #ifndef CORTEX_M4
-int mel_bits(int i) { return mel_cb[i].log2m; }
+int mel_bits(int i) {
+    return mel_cb[i].log2m;
+}
 
-int lspmelvq_cb_bits(int i) { return lspmelvq_cb[i].log2m; }
+int lspmelvq_cb_bits(int i) {
+    return lspmelvq_cb[i].log2m;
+}
 #endif
 
 #ifdef __EXPERIMENTAL__
-int lspdt_bits(int i) { return lsp_cbdt[i].log2m; }
+int lspdt_bits(int i) {
+    return lsp_cbdt[i].log2m;
+}
 #endif
 
-int lsp_pred_vq_bits(int i) { return lsp_cbjvm[i].log2m; }
+int lsp_pred_vq_bits(int i) {
+    return lsp_cbjvm[i].log2m;
+}
 
 /*---------------------------------------------------------------------------*\
 
@@ -82,7 +93,9 @@ int lsp_pred_vq_bits(int i) { return lsp_cbjvm[i].log2m; }
 
 \*---------------------------------------------------------------------------*/
 
-void quantise_init() {}
+void quantise_init()
+{
+}
 
 /*---------------------------------------------------------------------------*\
 
@@ -94,7 +107,7 @@ void quantise_init() {}
 
 \*---------------------------------------------------------------------------*/
 
-long quantise(const float *cb, float vec[], float w[], int k, int m, float *se)
+long quantise(const float * cb, float vec[], float w[], int k, int m, float *se)
 /* float   cb[][K];	current VQ codebook		*/
 /* float   vec[];	vector to quantise		*/
 /* float   w[];         weighting vector                */
@@ -102,31 +115,33 @@ long quantise(const float *cb, float vec[], float w[], int k, int m, float *se)
 /* int     m;		size of codebook		*/
 /* float   *se;		accumulated squared error 	*/
 {
-  float e;     /* current error		*/
-  long besti;  /* best index so far		*/
-  float beste; /* best error so far		*/
-  long j;
-  int i;
-  float diff;
+   float   e;		/* current error		*/
+   long	   besti;	/* best index so far		*/
+   float   beste;	/* best error so far		*/
+   long	   j;
+   int     i;
+   float   diff;
 
-  besti = 0;
-  beste = 1E32;
-  for (j = 0; j < m; j++) {
-    e = 0.0;
-    for (i = 0; i < k; i++) {
-      diff = cb[j * k + i] - vec[i];
-      e += powf(diff * w[i], 2.0);
-    }
-    if (e < beste) {
-      beste = e;
-      besti = j;
-    }
-  }
+   besti = 0;
+   beste = 1E32;
+   for(j=0; j<m; j++) {
+	e = 0.0;
+	for(i=0; i<k; i++) {
+	    diff = cb[j*k+i]-vec[i];
+	    e += powf(diff*w[i],2.0);
+	}
+	if (e < beste) {
+	    beste = e;
+	    besti = j;
+	}
+   }
 
-  *se += beste;
+   *se += beste;
 
-  return (besti);
+   return(besti);
 }
+
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -136,92 +151,108 @@ long quantise(const float *cb, float vec[], float w[], int k, int m, float *se)
 
 \*---------------------------------------------------------------------------*/
 
-void encode_lspds_scalar(int indexes[], float lsp[], int order) {
-  int i, k, m;
+void encode_lspds_scalar(
+		 int   indexes[],
+		 float lsp[],
+		 int   order
+)
+{
+    int   i,k,m;
+    
 
-  // Begin Deulis
-  // float lsp_hz[order];
-  // float lsp__hz[order];
-  // float dlsp[order];
-  // float dlsp_[order];
-  // float wt[order];
+	//Begin Deulis 
+	//float lsp_hz[order];
+	//float lsp__hz[order];
+	//float dlsp[order];
+	//float dlsp_[order];
+	//float wt[order];
 
-  float lsp_hz[LPC_ORD];
-  float lsp__hz[LPC_ORD];
-  float dlsp[LPC_ORD];
-  float dlsp_[LPC_ORD];
-  float wt[LPC_ORD];
-  // End Deulis
+	float lsp_hz[LPC_ORD];
+	float lsp__hz[LPC_ORD];
+	float dlsp[LPC_ORD];
+	float dlsp_[LPC_ORD];
+	float wt[LPC_ORD];
+	//End Deulis
 
-  const float *cb;
-  float se;
 
-  for (i = 0; i < order; i++) {
-    wt[i] = 1.0;
-  }
+    const float *cb;
+    float se;
 
-  /* convert from radians to Hz so we can use human readable
-     frequencies */
+    for(i=0; i<order; i++) {
+	wt[i] = 1.0;
+    }
 
-  for (i = 0; i < order; i++)
-    lsp_hz[i] = (4000.0 / PI) * lsp[i];
+    /* convert from radians to Hz so we can use human readable
+       frequencies */
 
-  // printf("\n");
+    for(i=0; i<order; i++)
+	lsp_hz[i] = (4000.0/PI)*lsp[i];
 
-  wt[0] = 1.0;
-  for (i = 0; i < order; i++) {
+    //printf("\n");
 
-    /* find difference from previous qunatised lsp */
+    wt[0] = 1.0;
+    for(i=0; i<order; i++) {
 
-    if (i)
-      dlsp[i] = lsp_hz[i] - lsp__hz[i - 1];
-    else
-      dlsp[0] = lsp_hz[0];
+	/* find difference from previous qunatised lsp */
 
-    k = lsp_cbd[i].k;
-    m = lsp_cbd[i].m;
-    cb = lsp_cbd[i].cb;
-    indexes[i] = quantise(cb, &dlsp[i], wt, k, m, &se);
-    dlsp_[i] = cb[indexes[i] * k];
+	if (i)
+	    dlsp[i] = lsp_hz[i] - lsp__hz[i-1];
+	else
+	    dlsp[0] = lsp_hz[0];
 
-    if (i)
-      lsp__hz[i] = lsp__hz[i - 1] + dlsp_[i];
-    else
-      lsp__hz[0] = dlsp_[0];
+	k = lsp_cbd[i].k;
+	m = lsp_cbd[i].m;
+	cb = lsp_cbd[i].cb;
+	indexes[i] = quantise(cb, &dlsp[i], wt, k, m, &se);
+ 	dlsp_[i] = cb[indexes[i]*k];
 
-    // printf("%d lsp %3.2f dlsp %3.2f dlsp_ %3.2f lsp_ %3.2f\n", i, lsp_hz[i],
-    // dlsp[i], dlsp_[i], lsp__hz[i]);
-  }
+
+	if (i)
+	    lsp__hz[i] = lsp__hz[i-1] + dlsp_[i];
+	else
+	    lsp__hz[0] = dlsp_[0];
+
+	//printf("%d lsp %3.2f dlsp %3.2f dlsp_ %3.2f lsp_ %3.2f\n", i, lsp_hz[i], dlsp[i], dlsp_[i], lsp__hz[i]);
+    }
+
 }
 
-void decode_lspds_scalar(float lsp_[], int indexes[], int order) {
-  int i, k;
 
-  // Begin Deulis
-  // float lsp__hz[order];
-  // float dlsp_[order];
+void decode_lspds_scalar(
+		 float lsp_[],
+		 int   indexes[],
+		 int   order
+)
+{
+    int   i,k;
 
-  float lsp__hz[LPC_ORD];
-  float dlsp_[LPC_ORD];
-  // End Deulis
+	//Begin Deulis
+	//float lsp__hz[order];
+	//float dlsp_[order];
 
-  const float *cb;
+	float lsp__hz[LPC_ORD];
+	float dlsp_[LPC_ORD];
+	//End Deulis
 
-  for (i = 0; i < order; i++) {
 
-    k = lsp_cbd[i].k;
-    cb = lsp_cbd[i].cb;
-    dlsp_[i] = cb[indexes[i] * k];
+    const float *cb;
 
-    if (i)
-      lsp__hz[i] = lsp__hz[i - 1] + dlsp_[i];
-    else
-      lsp__hz[0] = dlsp_[0];
+     for(i=0; i<order; i++) {
 
-    lsp_[i] = (PI / 4000.0) * lsp__hz[i];
+	k = lsp_cbd[i].k;
+	cb = lsp_cbd[i].cb;
+ 	dlsp_[i] = cb[indexes[i]*k];
 
-    // printf("%d dlsp_ %3.2f lsp_ %3.2f\n", i, dlsp_[i], lsp__hz[i]);
-  }
+	if (i)
+	    lsp__hz[i] = lsp__hz[i-1] + dlsp_[i];
+	else
+	    lsp__hz[0] = dlsp_[0];
+
+	lsp_[i] = (PI/4000.0)*lsp__hz[i];
+
+	//printf("%d dlsp_ %3.2f lsp_ %3.2f\n", i, dlsp_[i], lsp__hz[i]);
+    }
+
 }
 
 #ifdef __EXPERIMENTAL__
@@ -233,51 +264,56 @@ void decode_lspds_scalar(float lsp_[], int indexes[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void lspvq_quantise(float lsp[], float lsp_[], int order) {
-  int i, k, m, ncb, nlsp;
-  float wt[order], lsp_hz[order];
-  const float *cb;
-  float se;
-  int index;
+void lspvq_quantise(
+  float lsp[],
+  float lsp_[],
+  int   order
+)
+{
+    int   i,k,m,ncb, nlsp;
+    float  wt[order], lsp_hz[order];
+    const float *cb;
+    float se;
+    int   index;
 
-  for (i = 0; i < order; i++) {
-    wt[i] = 1.0;
-    lsp_hz[i] = 4000.0 * lsp[i] / PI;
-  }
+    for(i=0; i<order; i++) {
+	wt[i] = 1.0;
+	lsp_hz[i] = 4000.0*lsp[i]/PI;
+    }
 
-  /* scalar quantise LSPs 1,2,3,4 */
+    /* scalar quantise LSPs 1,2,3,4 */
 
-  /* simple uniform scalar quantisers */
+    /* simple uniform scalar quantisers */
 
-  for (i = 0; i < 4; i++) {
-    k = lsp_cb[i].k;
-    m = lsp_cb[i].m;
-    cb = lsp_cb[i].cb;
-    index = quantise(cb, &lsp_hz[i], wt, k, m, &se);
-    lsp_[i] = cb[index * k] * PI / 4000.0;
-  }
+   for(i=0; i<4; i++) {
+	k = lsp_cb[i].k;
+	m = lsp_cb[i].m;
+	cb = lsp_cb[i].cb;
+	index = quantise(cb, &lsp_hz[i], wt, k, m, &se);
+	lsp_[i] = cb[index*k]*PI/4000.0;
+    }
 
-  //#define WGHT
+   //#define WGHT
 #ifdef WGHT
-  for (i = 4; i < 9; i++) {
-    wt[i] = 1.0 / (lsp[i] - lsp[i - 1]) + 1.0 / (lsp[i + 1] - lsp[i]);
-    // printf("wt[%d] = %f\n", i, wt[i]);
-  }
-  wt[9] = 1.0 / (lsp[i] - lsp[i - 1]);
+    for(i=4; i<9; i++) {
+	wt[i] = 1.0/(lsp[i]-lsp[i-1]) + 1.0/(lsp[i+1]-lsp[i]);
+	//printf("wt[%d] = %f\n", i, wt[i]);
+    }
+    wt[9] = 1.0/(lsp[i]-lsp[i-1]);
 #endif
 
-  /* VQ LSPs 5,6,7,8,9,10 */
+    /* VQ LSPs 5,6,7,8,9,10 */
 
-  ncb = 4;
-  nlsp = 4;
-  k = lsp_cbjnd[ncb].k;
-  m = lsp_cbjnd[ncb].m;
-  cb = lsp_cbjnd[ncb].cb;
-  index = quantise(cb, &lsp_hz[nlsp], &wt[nlsp], k, m, &se);
-  for (i = 4; i < order; i++) {
-    lsp_[i] = cb[index * k + i - 4] * (PI / 4000.0);
-    // printf("%4.f (%4.f) ", lsp_hz[i], cb[index*k+i-4]);
-  }
+    ncb = 4;
+    nlsp = 4;
+    k = lsp_cbjnd[ncb].k;
+    m = lsp_cbjnd[ncb].m;
+    cb = lsp_cbjnd[ncb].cb;
+    index = quantise(cb, &lsp_hz[nlsp], &wt[nlsp], k, m, &se);
+    for(i=4; i<order; i++) {
+	lsp_[i] = cb[index*k+i-4]*(PI/4000.0);
+	//printf("%4.f (%4.f) ", lsp_hz[i], cb[index*k+i-4]);
+    }
 }
 
 /*---------------------------------------------------------------------------*\
@@ -288,47 +324,48 @@ void lspvq_quantise(float lsp[], float lsp_[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void lspjnd_quantise(float lsps[], float lsps_[], int order) {
-  int i, k, m;
-  float wt[order], lsps_hz[order];
-  const float *cb;
-  float se = 0.0;
-  int index;
+void lspjnd_quantise(float lsps[], float lsps_[], int order)
+{
+    int   i,k,m;
+    float  wt[order], lsps_hz[order];
+    const float *cb;
+    float se = 0.0;
+    int   index;
 
-  for (i = 0; i < order; i++) {
-    wt[i] = 1.0;
-  }
+    for(i=0; i<order; i++) {
+	wt[i] = 1.0;
+    }
 
-  /* convert to Hz */
+    /* convert to Hz */
 
-  for (i = 0; i < order; i++) {
-    lsps_hz[i] = lsps[i] * (4000.0 / PI);
-    lsps_[i] = lsps[i];
-  }
+    for(i=0; i<order; i++) {
+	lsps_hz[i] = lsps[i]*(4000.0/PI);
+	lsps_[i] = lsps[i];
+    }
 
-  /* simple uniform scalar quantisers */
+    /* simple uniform scalar quantisers */
 
-  for (i = 0; i < 4; i++) {
-    k = lsp_cbjnd[i].k;
-    m = lsp_cbjnd[i].m;
-    cb = lsp_cbjnd[i].cb;
-    index = quantise(cb, &lsps_hz[i], wt, k, m, &se);
-    lsps_[i] = cb[index * k] * (PI / 4000.0);
-  }
+    for(i=0; i<4; i++) {
+	k = lsp_cbjnd[i].k;
+	m = lsp_cbjnd[i].m;
+	cb = lsp_cbjnd[i].cb;
+	index = quantise(cb, &lsps_hz[i], wt, k, m, &se);
+	lsps_[i] = cb[index*k]*(PI/4000.0);
+    }
 
-  /* VQ LSPs 5,6,7,8,9,10 */
+    /* VQ LSPs 5,6,7,8,9,10 */
 
-  k = lsp_cbjnd[4].k;
-  m = lsp_cbjnd[4].m;
-  cb = lsp_cbjnd[4].cb;
-  index = quantise(cb, &lsps_hz[4], &wt[4], k, m, &se);
-  // printf("k = %d m = %d c[0] %f cb[k] %f\n", k,m,cb[0],cb[k]);
-  // printf("index = %4d: ", index);
-  for (i = 4; i < order; i++) {
-    lsps_[i] = cb[index * k + i - 4] * (PI / 4000.0);
-    // printf("%4.f (%4.f) ", lsps_hz[i], cb[index*k+i-4]);
-  }
-  // printf("\n");
+    k = lsp_cbjnd[4].k;
+    m = lsp_cbjnd[4].m;
+    cb = lsp_cbjnd[4].cb;
+    index = quantise(cb, &lsps_hz[4], &wt[4], k, m, &se);
+    //printf("k = %d m = %d c[0] %f cb[k] %f\n", k,m,cb[0],cb[k]);
+    //printf("index = %4d: ", index);
+    for(i=4; i<order; i++) {
+	lsps_[i] = cb[index*k+i-4]*(PI/4000.0);
+	//printf("%4.f (%4.f) ", lsps_hz[i], cb[index*k+i-4]);
+    }
+    //printf("\n");
 }
 
 void compute_weights(const float *x, float *w, int ndim);
@@ -351,104 +388,110 @@ void compute_weights(const float *x, float *w, int ndim);
 
 \*---------------------------------------------------------------------------*/
 
-void lspdt_quantise(float lsps[], float lsps_[], float lsps__prev[], int mode) {
-  int i;
-  float wt[LPC_ORD];
-  float lsps_dt[LPC_ORD];
+void lspdt_quantise(float lsps[], float lsps_[], float lsps__prev[], int mode)
+{
+    int   i;
+    float wt[LPC_ORD];
+    float lsps_dt[LPC_ORD];
 #ifdef TRY_LSPDT_VQ
-  int k, m;
-  int index;
-  const float *cb;
-  float se = 0.0;
+    int k,m;
+    int   index;
+    const float *cb;
+    float se = 0.0;
 #endif // TRY_LSPDT_VQ
 
-  // compute_weights(lsps, wt, LPC_ORD);
-  for (i = 0; i < LPC_ORD; i++) {
+    //compute_weights(lsps, wt, LPC_ORD);
+    for(i=0; i<LPC_ORD; i++) {
     wt[i] = 1.0;
-  }
+    }
 
-  // compute_weights(lsps, wt, LPC_ORD );
+    //compute_weights(lsps, wt, LPC_ORD );
 
-  for (i = 0; i < LPC_ORD; i++) {
-    lsps_dt[i] = lsps[i] - lsps__prev[i];
-    lsps_[i] = lsps__prev[i];
-  }
+    for(i=0; i<LPC_ORD; i++) {
+	lsps_dt[i] = lsps[i] - lsps__prev[i];
+	lsps_[i] = lsps__prev[i];
+    }
 
-  //#define TRY_LSPDT_VQ
+    //#define TRY_LSPDT_VQ
 #ifdef TRY_LSPDT_VQ
-  /* this actually improves speech a bit, but 40ms updates works surprsingly
-   * well.... */
-  k = lsp_cbdt[0].k;
-  m = lsp_cbdt[0].m;
-  cb = lsp_cbdt[0].cb;
-  index = quantise(cb, lsps_dt, wt, k, m, &se);
-  for (i = 0; i < LPC_ORD; i++) {
-    lsps_[i] += cb[index * k + i];
-  }
+    /* this actually improves speech a bit, but 40ms updates works surprsingly well.... */
+    k = lsp_cbdt[0].k;
+    m = lsp_cbdt[0].m;
+    cb = lsp_cbdt[0].cb;
+    index = quantise(cb, lsps_dt, wt, k, m, &se);
+    for(i=0; i<LPC_ORD; i++) {
+	lsps_[i] += cb[index*k + i];
+    }
 #endif
+
 }
 #endif
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX_ENTRIES 16384
 
-void compute_weights(const float *x, float *w, int ndim) {
+void compute_weights(const float *x, float *w, int ndim)
+{
   int i;
-  w[0] = MIN(x[0], x[1] - x[0]);
-  for (i = 1; i < ndim - 1; i++)
-    w[i] = MIN(x[i] - x[i - 1], x[i + 1] - x[i]);
-  w[ndim - 1] = MIN(x[ndim - 1] - x[ndim - 2], PI - x[ndim - 1]);
+  w[0] = MIN(x[0], x[1]-x[0]);
+  for (i=1;i<ndim-1;i++)
+    w[i] = MIN(x[i]-x[i-1], x[i+1]-x[i]);
+  w[ndim-1] = MIN(x[ndim-1]-x[ndim-2], PI-x[ndim-1]);
 
-  for (i = 0; i < ndim; i++)
-    w[i] = 1. / (.01 + w[i]);
-  // w[0]*=3;
-  // w[1]*=2;
+  for (i=0;i<ndim;i++)
+    w[i] = 1./(.01+w[i]);
+  //w[0]*=3;
+  //w[1]*=2;
 }
 
 #ifdef __EXPERIMENTAL__
 /* LSP weight calculation ported from m-file function kindly submitted
    by Anssi, OH3GDD */
 
-void compute_weights_anssi_mode2(const float *x, float *w, int ndim) {
+void compute_weights_anssi_mode2(const float *x, float *w, int ndim)
+{
   int i;
   float d[LPC_ORD];
 
   assert(ndim == LPC_ORD);
 
-  for (i = 0; i < LPC_ORD; i++)
-    d[i] = 1.0;
+  for(i=0; i<LPC_ORD; i++)
+      d[i] = 1.0;
 
   d[0] = x[1];
-  for (i = 1; i < LPC_ORD - 1; i++)
-    d[i] = x[i + 1] - x[i - 1];
-  d[LPC_ORD - 1] = PI - x[8];
-  for (i = 0; i < LPC_ORD; i++) {
-    if (x[i] < ((400.0 / 4000.0) * PI))
-      w[i] = 5.0 / (0.01 + d[i]);
-    else if (x[i] < ((700.0 / 4000.0) * PI))
-      w[i] = 4.0 / (0.01 + d[i]);
-    else if (x[i] < ((1200.0 / 4000.0) * PI))
-      w[i] = 3.0 / (0.01 + d[i]);
-    else if (x[i] < ((2000.0 / 4000.0) * PI))
-      w[i] = 2.0 / (0.01 + d[i]);
-    else
-      w[i] = 1.0 / (0.01 + d[i]);
+  for (i=1; i<LPC_ORD-1; i++)
+      d[i] = x[i+1] - x[i-1];
+  d[LPC_ORD-1] = PI - x[8];
+  for (i=0; i<LPC_ORD; i++) {
+        if (x[i]<((400.0/4000.0)*PI))
+            w[i]=5.0/(0.01+d[i]);
+        else if (x[i]<((700.0/4000.0)*PI))
+            w[i]=4.0/(0.01+d[i]);
+        else if (x[i]<((1200.0/4000.0)*PI))
+            w[i]=3.0/(0.01+d[i]);
+        else if (x[i]<((2000.0/4000.0)*PI))
+            w[i]=2.0/(0.01+d[i]);
+        else
+            w[i]=1.0/(0.01+d[i]);
 
-    w[i] = powf(w[i] + 0.3, 0.66);
+        w[i]=powf(w[i]+0.3, 0.66);
   }
 }
 #endif
 
-int find_nearest(const float *codebook, int nb_entries, float *x, int ndim) {
+int find_nearest(const float *codebook, int nb_entries, float *x, int ndim)
+{
   int i, j;
   float min_dist = 1e15;
   int nearest = 0;
 
-  for (i = 0; i < nb_entries; i++) {
-    float dist = 0;
-    for (j = 0; j < ndim; j++)
-      dist += (x[j] - codebook[i * ndim + j]) * (x[j] - codebook[i * ndim + j]);
-    if (dist < min_dist) {
+  for (i=0;i<nb_entries;i++)
+  {
+    float dist=0;
+    for (j=0;j<ndim;j++)
+      dist += (x[j]-codebook[i*ndim+j])*(x[j]-codebook[i*ndim+j]);
+    if (dist<min_dist)
+    {
       min_dist = dist;
       nearest = i;
     }
@@ -456,18 +499,19 @@ int find_nearest(const float *codebook, int nb_entries, float *x, int ndim) {
   return nearest;
 }
 
-int find_nearest_weighted(const float *codebook, int nb_entries, float *x,
-                          const float *w, int ndim) {
+int find_nearest_weighted(const float *codebook, int nb_entries, float *x, const float *w, int ndim)
+{
   int i, j;
   float min_dist = 1e15;
   int nearest = 0;
 
-  for (i = 0; i < nb_entries; i++) {
-    float dist = 0;
-    for (j = 0; j < ndim; j++)
-      dist += w[j] * (x[j] - codebook[i * ndim + j]) *
-              (x[j] - codebook[i * ndim + j]);
-    if (dist < min_dist) {
+  for (i=0;i<nb_entries;i++)
+  {
+    float dist=0;
+    for (j=0;j<ndim;j++)
+      dist += w[j]*(x[j]-codebook[i*ndim+j])*(x[j]-codebook[i*ndim+j]);
+    if (dist<min_dist)
+    {
       min_dist = dist;
       nearest = i;
     }
@@ -567,42 +611,44 @@ float lspmelvq_quantise(float *x, float *xq, int order)
 #define MBEST_STAGES 4
 
 struct MBEST_LIST {
-  int index[MBEST_STAGES]; /* index of each stage that lead us to this error */
-  float error;
+    int   index[MBEST_STAGES];    /* index of each stage that lead us to this error */
+    float error;
 };
 
 struct MBEST {
-  int entries; /* number of entries in mbest list   */
-  struct MBEST_LIST *list;
+    int                entries;   /* number of entries in mbest list   */
+    struct MBEST_LIST *list;
 };
 
+
 static struct MBEST *mbest_create(int entries) {
-  int i, j;
-  struct MBEST *mbest;
+    int           i,j;
+    struct MBEST *mbest;
 
-  assert(entries > 0);
-  mbest = (struct MBEST *)malloc(sizeof(struct MBEST));
-  assert(mbest != NULL);
+    assert(entries > 0);
+    mbest = (struct MBEST *)malloc(sizeof(struct MBEST));
+    assert(mbest != NULL);
 
-  mbest->entries = entries;
-  mbest->list =
-      (struct MBEST_LIST *)malloc(entries * sizeof(struct MBEST_LIST));
-  assert(mbest->list != NULL);
+    mbest->entries = entries;
+    mbest->list = (struct MBEST_LIST *)malloc(entries*sizeof(struct MBEST_LIST));
+    assert(mbest->list != NULL);
 
-  for (i = 0; i < mbest->entries; i++) {
-    for (j = 0; j < MBEST_STAGES; j++)
-      mbest->list[i].index[j] = 0;
-    mbest->list[i].error = 1E32;
-  }
+    for(i=0; i<mbest->entries; i++) {
+	for(j=0; j<MBEST_STAGES; j++)
+	    mbest->list[i].index[j] = 0;
+	mbest->list[i].error = 1E32;
+    }
 
-  return mbest;
+    return mbest;
 }
+
 
 static void mbest_destroy(struct MBEST *mbest) {
-  assert(mbest != NULL);
-  free(mbest->list);
-  free(mbest);
+    assert(mbest != NULL);
+    free(mbest->list);
+    free(mbest);
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -615,21 +661,22 @@ static void mbest_destroy(struct MBEST *mbest) {
 \*---------------------------------------------------------------------------*/
 
 static void mbest_insert(struct MBEST *mbest, int index[], float error) {
-  int i, j, found;
-  struct MBEST_LIST *list = mbest->list;
-  int entries = mbest->entries;
+    int                i, j, found;
+    struct MBEST_LIST *list    = mbest->list;
+    int                entries = mbest->entries;
 
-  found = 0;
-  for (i = 0; i < entries && !found; i++)
-    if (error < list[i].error) {
-      found = 1;
-      for (j = entries - 1; j > i; j--)
-        list[j] = list[j - 1];
-      for (j = 0; j < MBEST_STAGES; j++)
-        list[i].index[j] = index[j];
-      list[i].error = error;
-    }
+    found = 0;
+    for(i=0; i<entries && !found; i++)
+	if (error < list[i].error) {
+	    found = 1;
+	    for(j=entries-1; j>i; j--)
+		list[j] = list[j-1];
+	    for(j=0; j<MBEST_STAGES; j++)
+		list[i].index[j] = index[j];
+	    list[i].error = error;
+	}
 }
+
 
 // static void mbest_print(char title[], struct MBEST *mbest) {
 //     int i,j;
@@ -642,6 +689,7 @@ static void mbest_insert(struct MBEST *mbest, int index[], float error) {
 //     }
 // }
 
+
 /*---------------------------------------------------------------------------*\
 
   mbest_search
@@ -651,151 +699,152 @@ static void mbest_insert(struct MBEST *mbest, int index[], float error) {
 
 \*---------------------------------------------------------------------------*/
 
-static void mbest_search(const float *cb, /* VQ codebook to search         */
-                         float vec[],     /* target vector                 */
-                         float w[],       /* weighting vector              */
-                         int k,           /* dimension of vector           */
-                         int m,           /* number on entries in codebook */
-                         struct MBEST *mbest, /* list of closest matches */
-                         int index[] /* indexes that lead us here     */
-) {
-  float e;
-  int i, j;
-  float diff;
+static void mbest_search(
+		  const float  *cb,     /* VQ codebook to search         */
+		  float         vec[],  /* target vector                 */
+		  float         w[],    /* weighting vector              */
+		  int           k,      /* dimension of vector           */
+		  int           m,      /* number on entries in codebook */
+		  struct MBEST *mbest,  /* list of closest matches       */
+		  int           index[] /* indexes that lead us here     */
+)
+{
+   float   e;
+   int     i,j;
+   float   diff;
 
-  for (j = 0; j < m; j++) {
-    e = 0.0;
-    for (i = 0; i < k; i++) {
-      diff = cb[j * k + i] - vec[i];
-      e += powf(diff * w[i], 2.0);
-    }
-    index[0] = j;
-    mbest_insert(mbest, index, e);
-  }
+   for(j=0; j<m; j++) {
+	e = 0.0;
+	for(i=0; i<k; i++) {
+	    diff = cb[j*k+i]-vec[i];
+	    e += powf(diff*w[i],2.0);
+	}
+	index[0] = j;
+	mbest_insert(mbest, index, e);
+   }
 }
 
-/* 3 stage VQ LSP quantiser useing mbest search.  Design and guidance kindly
- * submitted by Anssi, OH3GDD */
 
-float lspmelvq_mbest_encode(int *indexes, float *x, float *xq, int ndim,
-                            int mbest_entries) {
+/* 3 stage VQ LSP quantiser useing mbest search.  Design and guidance kindly submitted by Anssi, OH3GDD */
+
+float lspmelvq_mbest_encode(int *indexes, float *x, float *xq, int ndim, int mbest_entries)
+{
   int i, j, n1, n2, n3;
   const float *codebook1 = lspmelvq_cb[0].cb;
   const float *codebook2 = lspmelvq_cb[1].cb;
   const float *codebook3 = lspmelvq_cb[2].cb;
   struct MBEST *mbest_stage1, *mbest_stage2, *mbest_stage3;
 
-  // Begin Deulis
-  // float target[ndim];
-  // float w[ndim];
+
+  //Begin Deulis
+  //float target[ndim];
+  //float w[ndim];
   float target[LPC_ORD];
   float w[LPC_ORD];
-  // End Deulis
+  //End Deulis
 
-  int index[MBEST_STAGES];
+  int   index[MBEST_STAGES];
   float mse, tmp;
 
-  for (i = 0; i < ndim; i++)
-    w[i] = 1.0;
+  for(i=0; i<ndim; i++)
+      w[i] = 1.0;
 
   mbest_stage1 = mbest_create(mbest_entries);
   mbest_stage2 = mbest_create(mbest_entries);
   mbest_stage3 = mbest_create(mbest_entries);
-  for (i = 0; i < MBEST_STAGES; i++)
-    index[i] = 0;
+  for(i=0; i<MBEST_STAGES; i++)
+      index[i] = 0;
 
   /* Stage 1 */
 
   mbest_search(codebook1, x, w, ndim, lspmelvq_cb[0].m, mbest_stage1, index);
-  // mbest_print("Stage 1:", mbest_stage1);
+  //mbest_print("Stage 1:", mbest_stage1);
 
   /* Stage 2 */
 
-  for (j = 0; j < mbest_entries; j++) {
-    index[1] = n1 = mbest_stage1->list[j].index[0];
-    for (i = 0; i < ndim; i++)
-      target[i] = x[i] - codebook1[ndim * n1 + i];
-    mbest_search(codebook2, target, w, ndim, lspmelvq_cb[1].m, mbest_stage2,
-                 index);
+  for (j=0; j<mbest_entries; j++) {
+      index[1] = n1 = mbest_stage1->list[j].index[0];
+      for(i=0; i<ndim; i++)
+	  target[i] = x[i] - codebook1[ndim*n1+i];
+      mbest_search(codebook2, target, w, ndim, lspmelvq_cb[1].m, mbest_stage2, index);
   }
-  // mbest_print("Stage 2:", mbest_stage2);
+  //mbest_print("Stage 2:", mbest_stage2);
 
   /* Stage 3 */
 
-  for (j = 0; j < mbest_entries; j++) {
-    index[2] = n1 = mbest_stage2->list[j].index[1];
-    index[1] = n2 = mbest_stage2->list[j].index[0];
-    for (i = 0; i < ndim; i++)
-      target[i] = x[i] - codebook1[ndim * n1 + i] - codebook2[ndim * n2 + i];
-    mbest_search(codebook3, target, w, ndim, lspmelvq_cb[2].m, mbest_stage3,
-                 index);
+  for (j=0; j<mbest_entries; j++) {
+      index[2] = n1 = mbest_stage2->list[j].index[1];
+      index[1] = n2 = mbest_stage2->list[j].index[0];
+      for(i=0; i<ndim; i++)
+	  target[i] = x[i] - codebook1[ndim*n1+i] - codebook2[ndim*n2+i];
+      mbest_search(codebook3, target, w, ndim, lspmelvq_cb[2].m, mbest_stage3, index);
   }
-  // mbest_print("Stage 3:", mbest_stage3);
+  //mbest_print("Stage 3:", mbest_stage3);
 
   n1 = mbest_stage3->list[0].index[2];
   n2 = mbest_stage3->list[0].index[1];
   n3 = mbest_stage3->list[0].index[0];
   mse = 0.0;
-  for (i = 0; i < ndim; i++) {
-    tmp = codebook1[ndim * n1 + i] + codebook2[ndim * n2 + i] +
-          codebook3[ndim * n3 + i];
-    mse += (x[i] - tmp) * (x[i] - tmp);
-    xq[i] = tmp;
+  for (i=0;i<ndim;i++) {
+      tmp = codebook1[ndim*n1+i] + codebook2[ndim*n2+i] + codebook3[ndim*n3+i];
+      mse += (x[i]-tmp)*(x[i]-tmp);
+      xq[i] = tmp;
   }
 
   mbest_destroy(mbest_stage1);
   mbest_destroy(mbest_stage2);
   mbest_destroy(mbest_stage3);
 
-  indexes[0] = n1;
-  indexes[1] = n2;
-  indexes[2] = n3;
+  indexes[0] = n1; indexes[1] = n2; indexes[2] = n3;
 
   return mse;
 }
 
-void lspmelvq_decode(int *indexes, float *xq, int ndim) {
+
+void lspmelvq_decode(int *indexes, float *xq, int ndim)
+{
   int i, n1, n2, n3;
   const float *codebook1 = lspmelvq_cb[0].cb;
   const float *codebook2 = lspmelvq_cb[1].cb;
   const float *codebook3 = lspmelvq_cb[2].cb;
 
-  n1 = indexes[0];
-  n2 = indexes[1];
-  n3 = indexes[2];
-  for (i = 0; i < ndim; i++) {
-    xq[i] = codebook1[ndim * n1 + i] + codebook2[ndim * n2 + i] +
-            codebook3[ndim * n3 + i];
+  n1 = indexes[0]; n2 = indexes[1]; n3 = indexes[2];
+  for (i=0;i<ndim;i++) {
+      xq[i] = codebook1[ndim*n1+i] + codebook2[ndim*n2+i] + codebook3[ndim*n3+i];
   }
 }
 #endif
 
-int check_lsp_order(float lsp[], int order) {
-  int i;
-  float tmp;
-  int swaps = 0;
 
-  for (i = 1; i < order; i++)
-    if (lsp[i] < lsp[i - 1]) {
-      // fprintf(stderr, "swap %d\n",i);
-      swaps++;
-      tmp = lsp[i - 1];
-      lsp[i - 1] = lsp[i] - 0.1;
-      lsp[i] = tmp + 0.1;
-      i = 1; /* start check again, as swap may have caused out of order */
-    }
+int check_lsp_order(float lsp[], int order)
+{
+    int   i;
+    float tmp;
+    int   swaps = 0;
 
-  return swaps;
+    for(i=1; i<order; i++)
+	if (lsp[i] < lsp[i-1]) {
+	    //fprintf(stderr, "swap %d\n",i);
+	    swaps++;
+	    tmp = lsp[i-1];
+	    lsp[i-1] = lsp[i]-0.1;
+	    lsp[i] = tmp+0.1;
+            i = 1; /* start check again, as swap may have caused out of order */
+	}
+
+    return swaps;
 }
 
-void force_min_lsp_dist(float lsp[], int order) {
-  int i;
+void force_min_lsp_dist(float lsp[], int order)
+{
+    int   i;
 
-  for (i = 1; i < order; i++)
-    if ((lsp[i] - lsp[i - 1]) < 0.01) {
-      lsp[i] += 0.01;
-    }
+    for(i=1; i<order; i++)
+	if ((lsp[i]-lsp[i-1]) < 0.01) {
+	    lsp[i] += 0.01;
+	}
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -826,103 +875,105 @@ void force_min_lsp_dist(float lsp[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void lpc_post_filter(kiss_fft_cfg fft_fwd_cfg, COMP Pw[], float ak[], int order,
-                     int dump, float beta, float gamma, int bass_boost,
-                     float E) {
-  int i;
-  COMP x[FFT_ENC];   /* input to FFTs                */
-  COMP Ww[FFT_ENC];  /* weighting spectrum           */
-  float Rw[FFT_ENC]; /* R = WA                       */
-  float e_before, e_after, gain;
-  float Pfw;
-  float max_Rw, min_Rw;
-  float coeff;
-  PROFILE_VAR(tstart, tfft1, taw, tfft2, tww, tr);
+void lpc_post_filter(kiss_fft_cfg fft_fwd_cfg, COMP Pw[], float ak[],
+                     int order, int dump, float beta, float gamma, int bass_boost, float E)
+{
+    int   i;
+    COMP  x[FFT_ENC];   /* input to FFTs                */
+    COMP  Ww[FFT_ENC];  /* weighting spectrum           */
+    float Rw[FFT_ENC];  /* R = WA                       */
+    float e_before, e_after, gain;
+    float Pfw;
+    float max_Rw, min_Rw;
+    float coeff;
+    PROFILE_VAR(tstart, tfft1, taw, tfft2, tww, tr);
 
-  PROFILE_SAMPLE(tstart);
+    PROFILE_SAMPLE(tstart);
 
-  /* Determine weighting filter spectrum W(exp(jw)) ---------------*/
+    /* Determine weighting filter spectrum W(exp(jw)) ---------------*/
 
-  for (i = 0; i < FFT_ENC; i++) {
-    x[i].real = 0.0;
-    x[i].imag = 0.0;
-  }
+    for(i=0; i<FFT_ENC; i++) {
+	x[i].real = 0.0;
+	x[i].imag = 0.0;
+    }
 
-  x[0].real = ak[0];
-  coeff = gamma;
-  for (i = 1; i <= order; i++) {
-    x[i].real = ak[i] * coeff;
-    coeff *= gamma;
-  }
-  kiss_fft(fft_fwd_cfg, (kiss_fft_cpx *)x, (kiss_fft_cpx *)Ww);
+    x[0].real = ak[0];
+    coeff = gamma;
+    for(i=1; i<=order; i++) {
+	x[i].real = ak[i] * coeff;
+        coeff *= gamma;
+    }
+    kiss_fft(fft_fwd_cfg, (kiss_fft_cpx *)x, (kiss_fft_cpx *)Ww);
 
-  PROFILE_SAMPLE_AND_LOG(tfft2, taw, "        fft2");
+    PROFILE_SAMPLE_AND_LOG(tfft2, taw, "        fft2");
 
-  for (i = 0; i < FFT_ENC / 2; i++) {
-    Ww[i].real = Ww[i].real * Ww[i].real + Ww[i].imag * Ww[i].imag;
-  }
+    for(i=0; i<FFT_ENC/2; i++) {
+	Ww[i].real = Ww[i].real*Ww[i].real + Ww[i].imag*Ww[i].imag;
+    }
 
-  PROFILE_SAMPLE_AND_LOG(tww, tfft2, "        Ww");
+    PROFILE_SAMPLE_AND_LOG(tww, tfft2, "        Ww");
 
-  /* Determined combined filter R = WA ---------------------------*/
+    /* Determined combined filter R = WA ---------------------------*/
 
-  max_Rw = 0.0;
-  min_Rw = 1E32;
-  for (i = 0; i < FFT_ENC / 2; i++) {
-    Rw[i] = sqrtf(Ww[i].real * Pw[i].real);
-    if (Rw[i] > max_Rw)
-      max_Rw = Rw[i];
-    if (Rw[i] < min_Rw)
-      min_Rw = Rw[i];
-  }
+    max_Rw = 0.0; min_Rw = 1E32;
+    for(i=0; i<FFT_ENC/2; i++) {
+	Rw[i] = sqrtf(Ww[i].real * Pw[i].real);
+	if (Rw[i] > max_Rw)
+	    max_Rw = Rw[i];
+	if (Rw[i] < min_Rw)
+	    min_Rw = Rw[i];
 
-  PROFILE_SAMPLE_AND_LOG(tr, tww, "        R");
+    }
 
-#ifdef DUMP
-  if (dump)
-    dump_Rw(Rw);
-#endif
+    PROFILE_SAMPLE_AND_LOG(tr, tww, "        R");
 
-  /* create post filter mag spectrum and apply ------------------*/
+    #ifdef DUMP
+    if (dump)
+      dump_Rw(Rw);
+    #endif
 
-  /* measure energy before post filtering */
+    /* create post filter mag spectrum and apply ------------------*/
 
-  e_before = 1E-4;
-  for (i = 0; i < FFT_ENC / 2; i++)
-    e_before += Pw[i].real;
+    /* measure energy before post filtering */
+
+    e_before = 1E-4;
+    for(i=0; i<FFT_ENC/2; i++)
+	e_before += Pw[i].real;
 
     /* apply post filter and measure energy  */
 
-#ifdef DUMP
-  if (dump)
-    dump_Pwb(Pw);
-#endif
+    #ifdef DUMP
+    if (dump)
+	dump_Pwb(Pw);
+    #endif
 
-  e_after = 1E-4;
-  for (i = 0; i < FFT_ENC / 2; i++) {
-    Pfw = powf(Rw[i], beta);
-    Pw[i].real *= Pfw * Pfw;
-    e_after += Pw[i].real;
-  }
-  gain = e_before / e_after;
 
-  /* apply gain factor to normalise energy, and LPC Energy */
-
-  gain *= E;
-  for (i = 0; i < FFT_ENC / 2; i++) {
-    Pw[i].real *= gain;
-  }
-
-  if (bass_boost) {
-    /* add 3dB to first 1 kHz to account for LP effect of PF */
-
-    for (i = 0; i < FFT_ENC / 8; i++) {
-      Pw[i].real *= 1.4 * 1.4;
+    e_after = 1E-4;
+    for(i=0; i<FFT_ENC/2; i++) {
+        Pfw = powf(Rw[i], beta);
+        Pw[i].real *= Pfw * Pfw;
+        e_after += Pw[i].real;
     }
-  }
+    gain = e_before/e_after;
 
-  PROFILE_SAMPLE_AND_LOG2(tr, "        filt");
+    /* apply gain factor to normalise energy, and LPC Energy */
+
+    gain *= E;
+    for(i=0; i<FFT_ENC/2; i++) {
+	Pw[i].real *= gain;
+    }
+
+    if (bass_boost) {
+        /* add 3dB to first 1 kHz to account for LP effect of PF */
+
+        for(i=0; i<FFT_ENC/8; i++) {
+            Pw[i].real *= 1.4*1.4;
+        }
+    }
+
+    PROFILE_SAMPLE_AND_LOG2(tr, "        filt");
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -934,42 +985,46 @@ void lpc_post_filter(kiss_fft_cfg fft_fwd_cfg, COMP Pw[], float ak[], int order,
 
 \*---------------------------------------------------------------------------*/
 
-void aks_to_M2(kiss_fft_cfg fft_fwd_cfg, float ak[], /* LPC's */
-               int order,
-               MODEL *model,   /* sinusoidal model parameters for this frame */
-               float E,        /* energy term */
-               float *snr,     /* signal to noise ratio for this frame in dB */
-               int dump,       /* true to dump sample to dump file */
-               int sim_pf,     /* true to simulate a post filter */
-               int pf,         /* true to enable actual LPC post filter */
-               int bass_boost, /* enable LPC filter 0-1kHz 3dB boost */
-               float beta, float gamma, /* LPC post filter parameters */
-               COMP Aw[]                /* output power spectrum */
-) {
-  COMP a[FFT_ENC];  /* input to FFT for power spectrum */
-  COMP Pw[FFT_ENC]; /* output power spectrum */
-  int i, m;         /* loop variables */
-  int am, bm;       /* limits of current band */
-  float r;          /* no. rads/bin */
-  float Em;         /* energy in band */
-  float Am;         /* spectral amplitude sample */
+void aks_to_M2(
+  kiss_fft_cfg  fft_fwd_cfg,
+  float         ak[],	     /* LPC's */
+  int           order,
+  MODEL        *model,	     /* sinusoidal model parameters for this frame */
+  float         E,	     /* energy term */
+  float        *snr,	     /* signal to noise ratio for this frame in dB */
+  int           dump,        /* true to dump sample to dump file */
+  int           sim_pf,      /* true to simulate a post filter */
+  int           pf,          /* true to enable actual LPC post filter */
+  int           bass_boost,  /* enable LPC filter 0-1kHz 3dB boost */
+  float         beta,
+  float         gamma,       /* LPC post filter parameters */
+  COMP          Aw[]         /* output power spectrum */
+)
+{
+  COMP a[FFT_ENC];	/* input to FFT for power spectrum */
+  COMP Pw[FFT_ENC];	/* output power spectrum */
+  int i,m;		/* loop variables */
+  int am,bm;		/* limits of current band */
+  float r;		/* no. rads/bin */
+  float Em;		/* energy in band */
+  float Am;		/* spectral amplitude sample */
   float signal, noise;
   PROFILE_VAR(tstart, tfft, tpw, tpf);
 
   PROFILE_SAMPLE(tstart);
 
-  r = TWO_PI / (FFT_ENC);
+  r = TWO_PI/(FFT_ENC);
 
   /* Determine DFT of A(exp(jw)) --------------------------------------------*/
 
-  for (i = 0; i < FFT_ENC; i++) {
+  for(i=0; i<FFT_ENC; i++) {
     a[i].real = 0.0;
     a[i].imag = 0.0;
     Pw[i].real = 0.0;
     Pw[i].imag = 0.0;
   }
 
-  for (i = 0; i <= order; i++)
+  for(i=0; i<=order; i++)
     a[i].real = ak[i];
   kiss_fft(fft_fwd_cfg, (kiss_fft_cpx *)a, (kiss_fft_cpx *)Aw);
 
@@ -977,67 +1032,64 @@ void aks_to_M2(kiss_fft_cfg fft_fwd_cfg, float ak[], /* LPC's */
 
   /* Determine power spectrum P(w) = E/(A(exp(jw))^2 ------------------------*/
 
-  for (i = 0; i < FFT_ENC / 2; i++) {
-    Pw[i].real =
-        1.0 / (Aw[i].real * Aw[i].real + Aw[i].imag * Aw[i].imag + 1E-6);
+  for(i=0; i<FFT_ENC/2; i++) {
+    Pw[i].real = 1.0/(Aw[i].real*Aw[i].real + Aw[i].imag*Aw[i].imag + 1E-6);
   }
 
   PROFILE_SAMPLE_AND_LOG(tpw, tfft, "      Pw");
 
   if (pf)
-    lpc_post_filter(fft_fwd_cfg, Pw, ak, order, dump, beta, gamma, bass_boost,
-                    E);
+      lpc_post_filter(fft_fwd_cfg, Pw, ak, order, dump, beta, gamma, bass_boost, E);
   else {
-    for (i = 0; i < FFT_ENC; i++) {
-      Pw[i].real *= E;
-    }
+      for(i=0; i<FFT_ENC; i++) {
+          Pw[i].real *= E;
+      }
   }
 
   PROFILE_SAMPLE_AND_LOG(tpf, tpw, "      LPC post filter");
 
-#ifdef DUMP
+  #ifdef DUMP
   if (dump)
-    dump_Pw(Pw);
-#endif
+      dump_Pw(Pw);
+  #endif
 
   /* Determine magnitudes from P(w) ----------------------------------------*/
 
   /* when used just by decoder {A} might be all zeroes so init signal
      and noise to prevent log(0) errors */
 
-  signal = 1E-30;
-  noise = 1E-32;
+  signal = 1E-30; noise = 1E-32;
 
-  for (m = 1; m <= model->L; m++) {
-    am = (int)((m - 0.5) * model->Wo / r + 0.5);
-    bm = (int)((m + 0.5) * model->Wo / r + 0.5);
-    Em = 0.0;
+  for(m=1; m<=model->L; m++) {
+      am = (int)((m - 0.5)*model->Wo/r + 0.5);
+      bm = (int)((m + 0.5)*model->Wo/r + 0.5);
+      Em = 0.0;
 
-    for (i = am; i < bm; i++)
-      Em += Pw[i].real;
-    Am = sqrtf(Em);
+      for(i=am; i<bm; i++)
+          Em += Pw[i].real;
+      Am = sqrtf(Em);
 
-    signal += model->A[m] * model->A[m];
-    noise += (model->A[m] - Am) * (model->A[m] - Am);
+      signal += model->A[m]*model->A[m];
+      noise  += (model->A[m] - Am)*(model->A[m] - Am);
 
-    /* This code significantly improves perf of LPC model, in
-       particular when combined with phase0.  The LPC spectrum tends
-       to track just under the peaks of the spectral envelope, and
-       just above nulls.  This algorithm does the reverse to
-       compensate - raising the amplitudes of spectral peaks, while
-       attenuating the null.  This enhances the formants, and
-       supresses the energy between formants. */
+      /* This code significantly improves perf of LPC model, in
+         particular when combined with phase0.  The LPC spectrum tends
+         to track just under the peaks of the spectral envelope, and
+         just above nulls.  This algorithm does the reverse to
+         compensate - raising the amplitudes of spectral peaks, while
+         attenuating the null.  This enhances the formants, and
+         supresses the energy between formants. */
 
-    if (sim_pf) {
-      if (Am > model->A[m])
-        Am *= 0.7;
-      if (Am < model->A[m])
-        Am *= 1.4;
-    }
+      if (sim_pf) {
+          if (Am > model->A[m])
+              Am *= 0.7;
+          if (Am < model->A[m])
+              Am *= 1.4;
+      }
 
-    model->A[m] = Am;
+      model->A[m] = Am;
   }
-  *snr = 10.0 * log10f(signal / noise);
+  *snr = 10.0*log10f(signal/noise);
 
   PROFILE_SAMPLE_AND_LOG2(tpf, "      rec");
 }
@@ -1052,20 +1104,19 @@ void aks_to_M2(kiss_fft_cfg fft_fwd_cfg, float ak[], /* LPC's */
 
 \*---------------------------------------------------------------------------*/
 
-int encode_Wo(float Wo, int bits) {
-  int index, Wo_levels = 1 << bits;
-  float Wo_min = TWO_PI / P_MAX;
-  float Wo_max = TWO_PI / P_MIN;
-  float norm;
+int encode_Wo(float Wo, int bits)
+{
+    int   index, Wo_levels = 1<<bits;
+    float Wo_min = TWO_PI/P_MAX;
+    float Wo_max = TWO_PI/P_MIN;
+    float norm;
 
-  norm = (Wo - Wo_min) / (Wo_max - Wo_min);
-  index = floorf(Wo_levels * norm + 0.5);
-  if (index < 0)
-    index = 0;
-  if (index > (Wo_levels - 1))
-    index = Wo_levels - 1;
+    norm = (Wo - Wo_min)/(Wo_max - Wo_min);
+    index = floorf(Wo_levels * norm + 0.5);
+    if (index < 0 ) index = 0;
+    if (index > (Wo_levels-1)) index = Wo_levels-1;
 
-  return index;
+    return index;
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1078,17 +1129,18 @@ int encode_Wo(float Wo, int bits) {
 
 \*---------------------------------------------------------------------------*/
 
-float decode_Wo(int index, int bits) {
-  float Wo_min = TWO_PI / P_MAX;
-  float Wo_max = TWO_PI / P_MIN;
-  float step;
-  float Wo;
-  int Wo_levels = 1 << bits;
+float decode_Wo(int index, int bits)
+{
+    float Wo_min = TWO_PI/P_MAX;
+    float Wo_max = TWO_PI/P_MIN;
+    float step;
+    float Wo;
+    int   Wo_levels = 1<<bits;
 
-  step = (Wo_max - Wo_min) / Wo_levels;
-  Wo = Wo_min + step * (index);
+    step = (Wo_max - Wo_min)/Wo_levels;
+    Wo   = Wo_min + step*(index);
 
-  return Wo;
+    return Wo;
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1101,20 +1153,19 @@ float decode_Wo(int index, int bits) {
 
 \*---------------------------------------------------------------------------*/
 
-int encode_log_Wo(float Wo, int bits) {
-  int index, Wo_levels = 1 << bits;
-  float Wo_min = TWO_PI / P_MAX;
-  float Wo_max = TWO_PI / P_MIN;
-  float norm;
+int encode_log_Wo(float Wo, int bits)
+{
+    int   index, Wo_levels = 1<<bits;
+    float Wo_min = TWO_PI/P_MAX;
+    float Wo_max = TWO_PI/P_MIN;
+    float norm;
 
-  norm = (log10f(Wo) - log10f(Wo_min)) / (log10f(Wo_max) - log10f(Wo_min));
-  index = floorf(Wo_levels * norm + 0.5);
-  if (index < 0)
-    index = 0;
-  if (index > (Wo_levels - 1))
-    index = Wo_levels - 1;
+    norm = (log10f(Wo) - log10f(Wo_min))/(log10f(Wo_max) - log10f(Wo_min));
+    index = floorf(Wo_levels * norm + 0.5);
+    if (index < 0 ) index = 0;
+    if (index > (Wo_levels-1)) index = Wo_levels-1;
 
-  return index;
+    return index;
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1127,17 +1178,18 @@ int encode_log_Wo(float Wo, int bits) {
 
 \*---------------------------------------------------------------------------*/
 
-float decode_log_Wo(int index, int bits) {
-  float Wo_min = TWO_PI / P_MAX;
-  float Wo_max = TWO_PI / P_MIN;
-  float step;
-  float Wo;
-  int Wo_levels = 1 << bits;
+float decode_log_Wo(int index, int bits)
+{
+    float Wo_min = TWO_PI/P_MAX;
+    float Wo_max = TWO_PI/P_MIN;
+    float step;
+    float Wo;
+    int   Wo_levels = 1<<bits;
 
-  step = (log10f(Wo_max) - log10f(Wo_min)) / Wo_levels;
-  Wo = log10f(Wo_min) + step * (index);
+    step = (log10f(Wo_max) - log10f(Wo_min))/Wo_levels;
+    Wo   = log10f(Wo_min) + step*(index);
 
-  return powf(10, Wo);
+    return powf(10,Wo);
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1150,34 +1202,33 @@ float decode_log_Wo(int index, int bits) {
 
 \*---------------------------------------------------------------------------*/
 
-int encode_Wo_dt(float Wo, float prev_Wo) {
-  int index, mask, max_index, min_index;
-  float Wo_min = TWO_PI / P_MAX;
-  float Wo_max = TWO_PI / P_MIN;
-  float norm;
+int encode_Wo_dt(float Wo, float prev_Wo)
+{
+    int   index, mask, max_index, min_index;
+    float Wo_min = TWO_PI/P_MAX;
+    float Wo_max = TWO_PI/P_MIN;
+    float norm;
 
-  norm = (Wo - prev_Wo) / (Wo_max - Wo_min);
-  index = floorf(WO_LEVELS * norm + 0.5);
-  // printf("ENC index: %d ", index);
+    norm = (Wo - prev_Wo)/(Wo_max - Wo_min);
+    index = floorf(WO_LEVELS * norm + 0.5);
+    //printf("ENC index: %d ", index);
 
-  /* hard limit */
+    /* hard limit */
 
-  max_index = (1 << (WO_DT_BITS - 1)) - 1;
-  min_index = -(max_index + 1);
-  if (index > max_index)
-    index = max_index;
-  if (index < min_index)
-    index = min_index;
-  // printf("max_index: %d  min_index: %d hard index: %d ",
-  //	   max_index,  min_index, index);
+    max_index = (1 << (WO_DT_BITS-1)) - 1;
+    min_index = - (max_index+1);
+    if (index > max_index) index = max_index;
+    if (index < min_index) index = min_index;
+    //printf("max_index: %d  min_index: %d hard index: %d ",
+    //	   max_index,  min_index, index);
 
-  /* mask so that only LSB WO_DT_BITS remain, bit WO_DT_BITS is the sign bit */
+    /* mask so that only LSB WO_DT_BITS remain, bit WO_DT_BITS is the sign bit */
 
-  mask = ((1 << WO_DT_BITS) - 1);
-  index &= mask;
-  // printf("mask: 0x%x index: 0x%x\n", mask, index);
+    mask = ((1 << WO_DT_BITS) - 1);
+    index &= mask;
+    //printf("mask: 0x%x index: 0x%x\n", mask, index);
 
-  return index;
+    return index;
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1190,34 +1241,33 @@ int encode_Wo_dt(float Wo, float prev_Wo) {
 
 \*---------------------------------------------------------------------------*/
 
-float decode_Wo_dt(int index, float prev_Wo) {
-  float Wo_min = TWO_PI / P_MAX;
-  float Wo_max = TWO_PI / P_MIN;
-  float step;
-  float Wo;
-  int mask;
+float decode_Wo_dt(int index, float prev_Wo)
+{
+    float Wo_min = TWO_PI/P_MAX;
+    float Wo_max = TWO_PI/P_MIN;
+    float step;
+    float Wo;
+    int   mask;
 
-  /* sign extend index */
+    /* sign extend index */
 
-  // printf("DEC index: %d ");
-  if (index & (1 << (WO_DT_BITS - 1))) {
-    mask = ~((1 << WO_DT_BITS) - 1);
-    index |= mask;
-  }
-  // printf("DEC mask: 0x%x  index: %d \n", mask, index);
+    //printf("DEC index: %d ");
+    if (index & (1 << (WO_DT_BITS-1))) {
+	mask = ~((1 << WO_DT_BITS) - 1);
+	index |= mask;
+    }
+    //printf("DEC mask: 0x%x  index: %d \n", mask, index);
 
-  step = (Wo_max - Wo_min) / WO_LEVELS;
-  Wo = prev_Wo + step * (index);
+    step = (Wo_max - Wo_min)/WO_LEVELS;
+    Wo   = prev_Wo + step*(index);
 
-  /* bit errors can make us go out of range leading to all sorts of
-     probs like seg faults */
+    /* bit errors can make us go out of range leading to all sorts of
+       probs like seg faults */
 
-  if (Wo > Wo_max)
-    Wo = Wo_max;
-  if (Wo < Wo_min)
-    Wo = Wo_min;
+    if (Wo > Wo_max) Wo = Wo_max;
+    if (Wo < Wo_min) Wo = Wo_min;
 
-  return Wo;
+    return Wo;
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1232,56 +1282,64 @@ float decode_Wo_dt(int index, float prev_Wo) {
 
 \*---------------------------------------------------------------------------*/
 
-float speech_to_uq_lsps(float lsp[], float ak[], float Sn[], float w[],
-                        int order) {
-  int i, roots;
-  float Wn[M];
+float speech_to_uq_lsps(float lsp[],
+			float ak[],
+		        float Sn[],
+		        float w[],
+		        int   order
+)
+{
+    int   i, roots;
+    float Wn[M];
+    
+	//Begin Deulis
+	//float R[order + 1];
+	float R[LPC_ORD + 1];
+	//End Deulis
 
-  // Begin Deulis
-  // float R[order + 1];
-  float R[LPC_ORD + 1];
-  // End Deulis
+    float e, E;
 
-  float e, E;
+    e = 0.0;
+    for(i=0; i<M; i++) {
+	Wn[i] = Sn[i]*w[i];
+	e += Wn[i]*Wn[i];
+    }
 
-  e = 0.0;
-  for (i = 0; i < M; i++) {
-    Wn[i] = Sn[i] * w[i];
-    e += Wn[i] * Wn[i];
-  }
+    /* trap 0 energy case as LPC analysis will fail */
 
-  /* trap 0 energy case as LPC analysis will fail */
+    if (e == 0.0) {
+	for(i=0; i<order; i++)
+	    lsp[i] = (PI/order)*(float)i;
+	return 0.0;
+    }
 
-  if (e == 0.0) {
-    for (i = 0; i < order; i++)
-      lsp[i] = (PI / order) * (float)i;
-    return 0.0;
-  }
+    autocorrelate(Wn, R, M, order);
+    levinson_durbin(R, ak, order);
 
-  autocorrelate(Wn, R, M, order);
-  levinson_durbin(R, ak, order);
+    E = 0.0;
+    for(i=0; i<=order; i++)
+	E += ak[i]*R[i];
 
-  E = 0.0;
-  for (i = 0; i <= order; i++)
-    E += ak[i] * R[i];
+    /* 15 Hz BW expansion as I can't hear the difference and it may help
+       help occasional fails in the LSP root finding.  Important to do this
+       after energy calculation to avoid -ve energy values.
+    */
 
-  /* 15 Hz BW expansion as I can't hear the difference and it may help
-     help occasional fails in the LSP root finding.  Important to do this
-     after energy calculation to avoid -ve energy values.
-  */
+    for(i=0; i<=order; i++)
+	ak[i] *= powf(0.994,(float)i);
 
-  for (i = 0; i <= order; i++)
-    ak[i] *= powf(0.994, (float)i);
+    roots = lpc_to_lsp(ak, order, lsp, 5, LSP_DELTA1);
+    if (roots != order) {
+	/* if root finding fails use some benign LSP values instead */
+	for(i=0; i<order; i++)
+	    lsp[i] = (PI/order)*(float)i;
+    }
 
-  roots = lpc_to_lsp(ak, order, lsp, 5, LSP_DELTA1);
-  if (roots != order) {
-    /* if root finding fails use some benign LSP values instead */
-    for (i = 0; i < order; i++)
-      lsp[i] = (PI / order) * (float)i;
-  }
-
-  return E;
+    return E;
 }
+
+
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -1294,33 +1352,34 @@ float speech_to_uq_lsps(float lsp[], float ak[], float Sn[], float w[],
 
 \*---------------------------------------------------------------------------*/
 
-void encode_lsps_scalar(int indexes[], float lsp[], int order) {
-  int i, k, m;
-  float wt[1];
+void encode_lsps_scalar(int indexes[], float lsp[], int order)
+{
+    int    i,k,m;
+    float  wt[1];
 
-  // Begin Deulis
-  // float  lsp_hz[order];
-  float lsp_hz[LPC_ORD];
-  // End Deulis
+	//Begin Deulis
+    //float  lsp_hz[order];
+	float  lsp_hz[LPC_ORD];
+	//End Deulis
 
-  const float *cb;
-  float se;
+    const float * cb;
+    float se;
 
-  /* convert from radians to Hz so we can use human readable
-     frequencies */
+    /* convert from radians to Hz so we can use human readable
+       frequencies */
 
-  for (i = 0; i < order; i++)
-    lsp_hz[i] = (4000.0 / PI) * lsp[i];
+    for(i=0; i<order; i++)
+	lsp_hz[i] = (4000.0/PI)*lsp[i];
 
-  /* scalar quantisers */
+    /* scalar quantisers */
 
-  wt[0] = 1.0;
-  for (i = 0; i < order; i++) {
-    k = lsp_cb[i].k;
-    m = lsp_cb[i].m;
-    cb = lsp_cb[i].cb;
-    indexes[i] = quantise(cb, &lsp_hz[i], wt, k, m, &se);
-  }
+    wt[0] = 1.0;
+    for(i=0; i<order; i++) {
+	k = lsp_cb[i].k;
+	m = lsp_cb[i].m;
+	cb = lsp_cb[i].cb;
+	indexes[i] = quantise(cb, &lsp_hz[i], wt, k, m, &se);
+    }
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1334,27 +1393,29 @@ void encode_lsps_scalar(int indexes[], float lsp[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void decode_lsps_scalar(float lsp[], int indexes[], int order) {
-  int i, k;
+void decode_lsps_scalar(float lsp[], int indexes[], int order)
+{
+    int    i,k;
 
-  // Begin Deulis
-  // float  lsp_hz[order];
-  float lsp_hz[LPC_ORD];
-  // End Deulis
+	//Begin Deulis
+    //float  lsp_hz[order];
+	float  lsp_hz[LPC_ORD];
+	//End Deulis
 
-  const float *cb;
+    const float * cb;
 
-  for (i = 0; i < order; i++) {
-    k = lsp_cb[i].k;
-    cb = lsp_cb[i].cb;
-    lsp_hz[i] = cb[indexes[i] * k];
-  }
+    for(i=0; i<order; i++) {
+	k = lsp_cb[i].k;
+	cb = lsp_cb[i].cb;
+	lsp_hz[i] = cb[indexes[i]*k];
+    }
 
-  /* convert back to radians */
+    /* convert back to radians */
 
-  for (i = 0; i < order; i++)
-    lsp[i] = (PI / 4000.0) * lsp_hz[i];
+    for(i=0; i<order; i++)
+	lsp[i] = (PI/4000.0)*lsp_hz[i];
 }
+
 
 #ifndef CORTEX_M4
 
@@ -1368,31 +1429,34 @@ void decode_lsps_scalar(float lsp[], int indexes[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void encode_mels_scalar(int indexes[], float mels[], int order) {
-  int i, m;
-  float wt[1];
-  const float *cb;
-  float se, mel_, dmel;
+void encode_mels_scalar(int indexes[], float mels[], int order)
+{
+    int    i,m;
+    float  wt[1];
+    const float * cb;
+    float se, mel_, dmel;
 
-  /* scalar quantisers */
+    /* scalar quantisers */
 
-  wt[0] = 1.0;
-  for (i = 0; i < order; i++) {
-    m = mel_cb[i].m;
-    cb = mel_cb[i].cb;
-    if (i % 2) {
-      /* on odd mels quantise difference */
-      mel_ = mel_cb[i - 1].cb[indexes[i - 1]];
-      dmel = mels[i] - mel_;
-      indexes[i] = quantise(cb, &dmel, wt, 1, m, &se);
-      // printf("%d mel: %f mel_: %f dmel: %f index: %d\n", i, mels[i], mel_,
-      // dmel, indexes[i]);
-    } else {
-      indexes[i] = quantise(cb, &mels[i], wt, 1, m, &se);
-      // printf("%d mel: %f dmel: %f index: %d\n", i, mels[i], 0.0, indexes[i]);
+    wt[0] = 1.0;
+    for(i=0; i<order; i++) {
+	m = mel_cb[i].m;
+	cb = mel_cb[i].cb;
+        if (i%2) {
+            /* on odd mels quantise difference */
+            mel_ = mel_cb[i-1].cb[indexes[i-1]];
+            dmel = mels[i] - mel_;
+            indexes[i] = quantise(cb, &dmel, wt, 1, m, &se);
+            //printf("%d mel: %f mel_: %f dmel: %f index: %d\n", i, mels[i], mel_, dmel, indexes[i]);
+        }
+        else {
+            indexes[i] = quantise(cb, &mels[i], wt, 1, m, &se);
+            //printf("%d mel: %f dmel: %f index: %d\n", i, mels[i], 0.0, indexes[i]);
+        }
+
     }
-  }
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -1405,18 +1469,21 @@ void encode_mels_scalar(int indexes[], float mels[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void decode_mels_scalar(float mels[], int indexes[], int order) {
-  int i;
-  const float *cb;
+void decode_mels_scalar(float mels[], int indexes[], int order)
+{
+    int    i;
+    const float * cb;
 
-  for (i = 0; i < order; i++) {
-    cb = mel_cb[i].cb;
-    if (i % 2) {
-      /* on odd mels quantise difference */
-      mels[i] = mels[i - 1] + cb[indexes[i]];
-    } else
-      mels[i] = cb[indexes[i]];
-  }
+    for(i=0; i<order; i++) {
+	cb = mel_cb[i].cb;
+        if (i%2) {
+            /* on odd mels quantise difference */
+            mels[i] = mels[i-1] + cb[indexes[i]];
+        }
+        else
+            mels[i] = cb[indexes[i]];
+    }
+
 }
 
 #endif
@@ -1436,54 +1503,56 @@ void decode_mels_scalar(float mels[], int indexes[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void encode_lsps_diff_freq_vq(int indexes[], float lsp[], int order) {
-  int i, k, m;
-  float lsp_hz[order];
-  float lsp__hz[order];
-  float dlsp[order];
-  float dlsp_[order];
-  float wt[order];
-  const float *cb;
-  float se;
+void encode_lsps_diff_freq_vq(int indexes[], float lsp[], int order)
+{
+    int    i,k,m;
+    float  lsp_hz[order];
+    float lsp__hz[order];
+    float dlsp[order];
+    float dlsp_[order];
+    float wt[order];
+    const float * cb;
+    float se;
 
-  for (i = 0; i < order; i++) {
-    wt[i] = 1.0;
-  }
+    for(i=0; i<order; i++) {
+	wt[i] = 1.0;
+    }
 
-  /* convert from radians to Hz so we can use human readable
-     frequencies */
+    /* convert from radians to Hz so we can use human readable
+       frequencies */
 
-  for (i = 0; i < order; i++)
-    lsp_hz[i] = (4000.0 / PI) * lsp[i];
+    for(i=0; i<order; i++)
+	lsp_hz[i] = (4000.0/PI)*lsp[i];
 
-  /* scalar quantisers for LSP differences 1..4 */
+    /* scalar quantisers for LSP differences 1..4 */
 
-  wt[0] = 1.0;
-  for (i = 0; i < 4; i++) {
-    if (i)
-      dlsp[i] = lsp_hz[i] - lsp__hz[i - 1];
-    else
-      dlsp[0] = lsp_hz[0];
+    wt[0] = 1.0;
+    for(i=0; i<4; i++) {
+	if (i)
+	    dlsp[i] = lsp_hz[i] - lsp__hz[i-1];
+	else
+	    dlsp[0] = lsp_hz[0];
 
-    k = lsp_cbd[i].k;
-    m = lsp_cbd[i].m;
-    cb = lsp_cbd[i].cb;
-    indexes[i] = quantise(cb, &dlsp[i], wt, k, m, &se);
-    dlsp_[i] = cb[indexes[i] * k];
+	k = lsp_cbd[i].k;
+	m = lsp_cbd[i].m;
+	cb = lsp_cbd[i].cb;
+	indexes[i] = quantise(cb, &dlsp[i], wt, k, m, &se);
+ 	dlsp_[i] = cb[indexes[i]*k];
 
-    if (i)
-      lsp__hz[i] = lsp__hz[i - 1] + dlsp_[i];
-    else
-      lsp__hz[0] = dlsp_[0];
-  }
+	if (i)
+	    lsp__hz[i] = lsp__hz[i-1] + dlsp_[i];
+	else
+	    lsp__hz[0] = dlsp_[0];
+    }
 
-  /* VQ LSPs 5,6,7,8,9,10 */
+    /* VQ LSPs 5,6,7,8,9,10 */
 
-  k = lsp_cbjnd[4].k;
-  m = lsp_cbjnd[4].m;
-  cb = lsp_cbjnd[4].cb;
-  indexes[4] = quantise(cb, &lsp_hz[4], &wt[4], k, m, &se);
+    k = lsp_cbjnd[4].k;
+    m = lsp_cbjnd[4].m;
+    cb = lsp_cbjnd[4].cb;
+    indexes[4] = quantise(cb, &lsp_hz[4], &wt[4], k, m, &se);
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -1496,36 +1565,38 @@ void encode_lsps_diff_freq_vq(int indexes[], float lsp[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void decode_lsps_diff_freq_vq(float lsp_[], int indexes[], int order) {
-  int i, k, m;
-  float dlsp_[order];
-  float lsp__hz[order];
-  const float *cb;
+void decode_lsps_diff_freq_vq(float lsp_[], int indexes[], int order)
+{
+    int    i,k,m;
+    float  dlsp_[order];
+    float  lsp__hz[order];
+    const float * cb;
 
-  /* scalar LSP differences */
+    /* scalar LSP differences */
 
-  for (i = 0; i < 4; i++) {
-    cb = lsp_cbd[i].cb;
-    dlsp_[i] = cb[indexes[i]];
-    if (i)
-      lsp__hz[i] = lsp__hz[i - 1] + dlsp_[i];
-    else
-      lsp__hz[0] = dlsp_[0];
-  }
+    for(i=0; i<4; i++) {
+	cb = lsp_cbd[i].cb;
+	dlsp_[i] = cb[indexes[i]];
+	if (i)
+	    lsp__hz[i] = lsp__hz[i-1] + dlsp_[i];
+	else
+	    lsp__hz[0] = dlsp_[0];
+    }
 
-  /* VQ */
+    /* VQ */
 
-  k = lsp_cbjnd[4].k;
-  m = lsp_cbjnd[4].m;
-  cb = lsp_cbjnd[4].cb;
-  for (i = 4; i < order; i++)
-    lsp__hz[i] = cb[indexes[4] * k + i - 4];
+    k = lsp_cbjnd[4].k;
+    m = lsp_cbjnd[4].m;
+    cb = lsp_cbjnd[4].cb;
+    for(i=4; i<order; i++)
+	lsp__hz[i] = cb[indexes[4]*k+i-4];
 
-  /* convert back to radians */
+    /* convert back to radians */
 
-  for (i = 0; i < order; i++)
-    lsp_[i] = (PI / 4000.0) * lsp__hz[i];
+    for(i=0; i<order; i++)
+	lsp_[i] = (PI/4000.0)*lsp__hz[i];
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -1538,31 +1609,36 @@ void decode_lsps_diff_freq_vq(float lsp_[], int indexes[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void encode_lsps_diff_time(int indexes[], float lsps[], float lsps__prev[],
-                           int order) {
-  int i, k, m;
-  float lsps_dt[order];
-  float wt[LPC_MAX];
-  const float *cb;
-  float se;
+void encode_lsps_diff_time(int indexes[],
+			       float lsps[],
+			       float lsps__prev[],
+			       int order)
+{
+    int    i,k,m;
+    float  lsps_dt[order];
+    float  wt[LPC_MAX];
+    const  float * cb;
+    float  se;
 
-  /* Determine difference in time and convert from radians to Hz so
-     we can use human readable frequencies */
+    /* Determine difference in time and convert from radians to Hz so
+       we can use human readable frequencies */
 
-  for (i = 0; i < order; i++) {
-    lsps_dt[i] = (4000 / PI) * (lsps[i] - lsps__prev[i]);
-  }
+    for(i=0; i<order; i++) {
+	lsps_dt[i] = (4000/PI)*(lsps[i] - lsps__prev[i]);
+    }
 
-  /* scalar quantisers */
+    /* scalar quantisers */
 
-  wt[0] = 1.0;
-  for (i = 0; i < order; i++) {
-    k = lsp_cbdt[i].k;
-    m = lsp_cbdt[i].m;
-    cb = lsp_cbdt[i].cb;
-    indexes[i] = quantise(cb, &lsps_dt[i], wt, k, m, &se);
-  }
+    wt[0] = 1.0;
+    for(i=0; i<order; i++) {
+	k = lsp_cbdt[i].k;
+	m = lsp_cbdt[i].m;
+	cb = lsp_cbdt[i].cb;
+	indexes[i] = quantise(cb, &lsps_dt[i], wt, k, m, &se);
+    }
+
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -1575,19 +1651,24 @@ void encode_lsps_diff_time(int indexes[], float lsps[], float lsps__prev[],
 
 \*---------------------------------------------------------------------------*/
 
-void decode_lsps_diff_time(float lsps_[], int indexes[], float lsps__prev[],
-                           int order) {
-  int i, k, m;
-  const float *cb;
+void decode_lsps_diff_time(
+			      float lsps_[],
+			      int indexes[],
+			      float lsps__prev[],
+			      int order)
+{
+    int    i,k,m;
+    const  float * cb;
 
-  for (i = 0; i < order; i++)
-    lsps_[i] = lsps__prev[i];
+    for(i=0; i<order; i++)
+	lsps_[i] = lsps__prev[i];
 
-  for (i = 0; i < order; i++) {
-    k = lsp_cbdt[i].k;
-    cb = lsp_cbdt[i].cb;
-    lsps_[i] += (PI / 4000.0) * cb[indexes[i] * k];
-  }
+    for(i=0; i<order; i++) {
+	k = lsp_cbdt[i].k;
+	cb = lsp_cbdt[i].cb;
+	lsps_[i] += (PI/4000.0)*cb[indexes[i]*k];
+    }
+
 }
 #endif
 
@@ -1601,46 +1682,50 @@ void decode_lsps_diff_time(float lsps_[], int indexes[], float lsps__prev[],
 
 \*---------------------------------------------------------------------------*/
 
-void encode_lsps_vq(int *indexes, float *x, float *xq, int order) {
+void encode_lsps_vq(int *indexes, float *x, float *xq, int order)
+{
   int i, n1, n2, n3;
 
-  // Begin Deulis
-  // float err[order], err2[order], err3[order];
-  // float w[order], w2[order], w3[order];
+  //Begin Deulis
+  //float err[order], err2[order], err3[order];
+  //float w[order], w2[order], w3[order];
   float err[LPC_ORD], err2[LPC_ORD], err3[LPC_ORD];
   float w[LPC_ORD], w2[LPC_ORD], w3[LPC_ORD];
-  // End Deulis
+  //End Deulis
 
   const float *codebook1 = lsp_cbjvm[0].cb;
   const float *codebook2 = lsp_cbjvm[1].cb;
   const float *codebook3 = lsp_cbjvm[2].cb;
 
-  w[0] = MIN(x[0], x[1] - x[0]);
-  for (i = 1; i < order - 1; i++)
-    w[i] = MIN(x[i] - x[i - 1], x[i + 1] - x[i]);
-  w[order - 1] = MIN(x[order - 1] - x[order - 2], PI - x[order - 1]);
+  w[0] = MIN(x[0], x[1]-x[0]);
+  for (i=1;i<order-1;i++)
+    w[i] = MIN(x[i]-x[i-1], x[i+1]-x[i]);
+  w[order-1] = MIN(x[order-1]-x[order-2], PI-x[order-1]);
 
   compute_weights(x, w, order);
 
   n1 = find_nearest(codebook1, lsp_cbjvm[0].m, x, order);
 
-  for (i = 0; i < order; i++) {
-    xq[i] = codebook1[order * n1 + i];
+  for (i=0;i<order;i++)
+  {
+    xq[i]  = codebook1[order*n1+i];
     err[i] = x[i] - xq[i];
   }
-  for (i = 0; i < order / 2; i++) {
-    err2[i] = err[2 * i];
-    err3[i] = err[2 * i + 1];
-    w2[i] = w[2 * i];
-    w3[i] = w[2 * i + 1];
+  for (i=0;i<order/2;i++)
+  {
+    err2[i] = err[2*i];
+    err3[i] = err[2*i+1];
+    w2[i] = w[2*i];
+    w3[i] = w[2*i+1];
   }
-  n2 = find_nearest_weighted(codebook2, lsp_cbjvm[1].m, err2, w2, order / 2);
-  n3 = find_nearest_weighted(codebook3, lsp_cbjvm[2].m, err3, w3, order / 2);
+  n2 = find_nearest_weighted(codebook2, lsp_cbjvm[1].m, err2, w2, order/2);
+  n3 = find_nearest_weighted(codebook3, lsp_cbjvm[2].m, err3, w3, order/2);
 
   indexes[0] = n1;
   indexes[1] = n2;
   indexes[2] = n3;
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -1650,7 +1735,8 @@ void encode_lsps_vq(int *indexes, float *x, float *xq, int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void decode_lsps_vq(int *indexes, float *xq, int order, int stages) {
+void decode_lsps_vq(int *indexes, float *xq, int order, int stages)
+{
   int i, n1, n2, n3;
   const float *codebook1 = lsp_cbjvm[0].cb;
   const float *codebook2 = lsp_cbjvm[1].cb;
@@ -1660,17 +1746,19 @@ void decode_lsps_vq(int *indexes, float *xq, int order, int stages) {
   n2 = indexes[1];
   n3 = indexes[2];
 
-  for (i = 0; i < order; i++) {
-    xq[i] = codebook1[order * n1 + i];
+  for (i=0;i<order;i++) {
+      xq[i] = codebook1[order*n1+i];
   }
 
   if (stages != 1) {
-    for (i = 0; i < order / 2; i++) {
-      xq[2 * i] += codebook2[order * n2 / 2 + i];
-      xq[2 * i + 1] += codebook3[order * n3 / 2 + i];
-    }
+      for (i=0;i<order/2;i++) {
+          xq[2*i] += codebook2[order*n2/2+i];
+          xq[2*i+1] += codebook3[order*n3/2+i];
+      }
   }
+
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -1685,45 +1773,50 @@ void decode_lsps_vq(int *indexes, float *xq, int order, int stages) {
 
 \*---------------------------------------------------------------------------*/
 
-void bw_expand_lsps(float lsp[], int order, float min_sep_low,
-                    float min_sep_high) {
-  int i;
+void bw_expand_lsps(float lsp[], int order, float min_sep_low, float min_sep_high)
+{
+    int i;
 
-  for (i = 1; i < 4; i++) {
+    for(i=1; i<4; i++) {
 
-    if ((lsp[i] - lsp[i - 1]) < min_sep_low * (PI / 4000.0))
-      lsp[i] = lsp[i - 1] + min_sep_low * (PI / 4000.0);
-  }
+	if ((lsp[i] - lsp[i-1]) < min_sep_low*(PI/4000.0))
+	    lsp[i] = lsp[i-1] + min_sep_low*(PI/4000.0);
 
-  /* As quantiser gaps increased, larger BW expansion was required
-     to prevent twinkly noises.  This may need more experiment for
-     different quanstisers.
-  */
+    }
 
-  for (i = 4; i < order; i++) {
-    if (lsp[i] - lsp[i - 1] < min_sep_high * (PI / 4000.0))
-      lsp[i] = lsp[i - 1] + min_sep_high * (PI / 4000.0);
-  }
+    /* As quantiser gaps increased, larger BW expansion was required
+       to prevent twinkly noises.  This may need more experiment for
+       different quanstisers.
+    */
+
+    for(i=4; i<order; i++) {
+	if (lsp[i] - lsp[i-1] < min_sep_high*(PI/4000.0))
+	    lsp[i] = lsp[i-1] + min_sep_high*(PI/4000.0);
+    }
 }
 
-void bw_expand_lsps2(float lsp[], int order) {
-  int i;
+void bw_expand_lsps2(float lsp[],
+		    int   order
+)
+{
+    int i;
 
-  for (i = 1; i < 4; i++) {
+    for(i=1; i<4; i++) {
 
-    if ((lsp[i] - lsp[i - 1]) < 100.0 * (PI / 4000.0))
-      lsp[i] = lsp[i - 1] + 100.0 * (PI / 4000.0);
-  }
+	if ((lsp[i] - lsp[i-1]) < 100.0*(PI/4000.0))
+	    lsp[i] = lsp[i-1] + 100.0*(PI/4000.0);
 
-  /* As quantiser gaps increased, larger BW expansion was required
-     to prevent twinkly noises.  This may need more experiment for
-     different quanstisers.
-  */
+    }
 
-  for (i = 4; i < order; i++) {
-    if (lsp[i] - lsp[i - 1] < 200.0 * (PI / 4000.0))
-      lsp[i] = lsp[i - 1] + 200.0 * (PI / 4000.0);
-  }
+    /* As quantiser gaps increased, larger BW expansion was required
+       to prevent twinkly noises.  This may need more experiment for
+       different quanstisers.
+    */
+
+    for(i=4; i<order; i++) {
+	if (lsp[i] - lsp[i-1] < 200.0*(PI/4000.0))
+	    lsp[i] = lsp[i-1] + 200.0*(PI/4000.0);
+    }
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1747,51 +1840,56 @@ void bw_expand_lsps2(float lsp[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void locate_lsps_jnd_steps(float lsps[], int order) {
-  int i;
-  float lsp_hz, step;
+void locate_lsps_jnd_steps(float lsps[], int order)
+{
+    int   i;
+    float lsp_hz, step;
 
-  assert(order == 10);
+    assert(order == 10);
 
-  /* quantise to 25Hz steps */
+    /* quantise to 25Hz steps */
 
-  step = 25;
-  for (i = 0; i < 2; i++) {
-    lsp_hz = lsps[i] * 4000.0 / PI;
-    lsp_hz = floorf(lsp_hz / step + 0.5) * step;
-    lsps[i] = lsp_hz * PI / 4000.0;
-    if (i) {
-      if (lsps[i] == lsps[i - 1])
-        lsps[i] += step * PI / 4000.0;
+    step = 25;
+    for(i=0; i<2; i++) {
+	lsp_hz = lsps[i]*4000.0/PI;
+	lsp_hz = floorf(lsp_hz/step + 0.5)*step;
+	lsps[i] = lsp_hz*PI/4000.0;
+	if (i) {
+	    if (lsps[i] == lsps[i-1])
+		lsps[i]   += step*PI/4000.0;
+
+	}
     }
-  }
 
-  /* quantise to 50Hz steps */
+    /* quantise to 50Hz steps */
 
-  step = 50;
-  for (i = 2; i < 4; i++) {
-    lsp_hz = lsps[i] * 4000.0 / PI;
-    lsp_hz = floorf(lsp_hz / step + 0.5) * step;
-    lsps[i] = lsp_hz * PI / 4000.0;
-    if (i) {
-      if (lsps[i] == lsps[i - 1])
-        lsps[i] += step * PI / 4000.0;
+    step = 50;
+    for(i=2; i<4; i++) {
+	lsp_hz = lsps[i]*4000.0/PI;
+	lsp_hz = floorf(lsp_hz/step + 0.5)*step;
+	lsps[i] = lsp_hz*PI/4000.0;
+	if (i) {
+	    if (lsps[i] == lsps[i-1])
+		lsps[i] += step*PI/4000.0;
+
+	}
     }
-  }
 
-  /* quantise to 100Hz steps */
+    /* quantise to 100Hz steps */
 
-  step = 100;
-  for (i = 4; i < 10; i++) {
-    lsp_hz = lsps[i] * 4000.0 / PI;
-    lsp_hz = floorf(lsp_hz / step + 0.5) * step;
-    lsps[i] = lsp_hz * PI / 4000.0;
-    if (i) {
-      if (lsps[i] == lsps[i - 1])
-        lsps[i] += step * PI / 4000.0;
+    step = 100;
+    for(i=4; i<10; i++) {
+	lsp_hz = lsps[i]*4000.0/PI;
+	lsp_hz = floorf(lsp_hz/step + 0.5)*step;
+	lsps[i] = lsp_hz*PI/4000.0;
+	if (i) {
+	    if (lsps[i] == lsps[i-1])
+		lsps[i] += step*PI/4000.0;
+
+	}
     }
-  }
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -1804,10 +1902,11 @@ void locate_lsps_jnd_steps(float lsps[], int order) {
 
 \*---------------------------------------------------------------------------*/
 
-void apply_lpc_correction(MODEL *model) {
-  if (model->Wo < (PI * 150.0 / 4000)) {
-    model->A[1] *= 0.032;
-  }
+void apply_lpc_correction(MODEL *model)
+{
+    if (model->Wo < (PI*150.0/4000)) {
+	model->A[1] *= 0.032;
+    }
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1820,21 +1919,20 @@ void apply_lpc_correction(MODEL *model) {
 
 \*---------------------------------------------------------------------------*/
 
-int encode_energy(float e, int bits) {
-  int index, e_levels = 1 << bits;
-  float e_min = E_MIN_DB;
-  float e_max = E_MAX_DB;
-  float norm;
+int encode_energy(float e, int bits)
+{
+    int   index, e_levels = 1<<bits;
+    float e_min = E_MIN_DB;
+    float e_max = E_MAX_DB;
+    float norm;
 
-  e = 10.0 * log10f(e);
-  norm = (e - e_min) / (e_max - e_min);
-  index = floorf(e_levels * norm + 0.5);
-  if (index < 0)
-    index = 0;
-  if (index > (e_levels - 1))
-    index = e_levels - 1;
+    e = 10.0*log10f(e);
+    norm = (e - e_min)/(e_max - e_min);
+    index = floorf(e_levels * norm + 0.5);
+    if (index < 0 ) index = 0;
+    if (index > (e_levels-1)) index = e_levels-1;
 
-  return index;
+    return index;
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1847,18 +1945,19 @@ int encode_energy(float e, int bits) {
 
 \*---------------------------------------------------------------------------*/
 
-float decode_energy(int index, int bits) {
-  float e_min = E_MIN_DB;
-  float e_max = E_MAX_DB;
-  float step;
-  float e;
-  int e_levels = 1 << bits;
+float decode_energy(int index, int bits)
+{
+    float e_min = E_MIN_DB;
+    float e_max = E_MAX_DB;
+    float step;
+    float e;
+    int   e_levels = 1<<bits;
 
-  step = (e_max - e_min) / e_levels;
-  e = e_min + step * (index);
-  e = powf(10.0, e / 10.0);
+    step = (e_max - e_min)/e_levels;
+    e    = e_min + step*(index);
+    e    = powf(10.0,e/10.0);
 
-  return e;
+    return e;
 }
 
 #ifdef NOT_USED
@@ -1873,58 +1972,71 @@ float decode_energy(int index, int bits) {
 
 \*---------------------------------------------------------------------------*/
 
-float decode_amplitudes(kiss_fft_cfg fft_fwd_cfg, MODEL *model, float ak[],
-                        int lsp_indexes[], int energy_index, float lsps[],
-                        float *e) {
-  float snr;
+float decode_amplitudes(kiss_fft_cfg  fft_fwd_cfg,
+			MODEL *model,
+			float  ak[],
+		        int    lsp_indexes[],
+		        int    energy_index,
+			float  lsps[],
+			float *e
+)
+{
+    float snr;
 
-  decode_lsps_scalar(lsps, lsp_indexes, LPC_ORD);
-  bw_expand_lsps(lsps, LPC_ORD);
-  lsp_to_lpc(lsps, ak, LPC_ORD);
-  *e = decode_energy(energy_index);
-  aks_to_M2(ak, LPC_ORD, model, *e, &snr, 1, 0, 0, 1);
-  apply_lpc_correction(model);
+    decode_lsps_scalar(lsps, lsp_indexes, LPC_ORD);
+    bw_expand_lsps(lsps, LPC_ORD);
+    lsp_to_lpc(lsps, ak, LPC_ORD);
+    *e = decode_energy(energy_index);
+    aks_to_M2(ak, LPC_ORD, model, *e, &snr, 1, 0, 0, 1);
+    apply_lpc_correction(model);
 
-  return snr;
+    return snr;
 }
 #endif
 
 static float ge_coeff[2] = {0.8, 0.9};
 
-void compute_weights2(const float *x, const float *xp, float *w) {
+void compute_weights2(const float *x, const float *xp, float *w)
+{
   w[0] = 30;
   w[1] = 1;
-  if (x[1] < 0) {
-    w[0] *= .6;
-    w[1] *= .3;
+  if (x[1]<0)
+  {
+     w[0] *= .6;
+     w[1] *= .3;
   }
-  if (x[1] < -10) {
-    w[0] *= .3;
-    w[1] *= .3;
+  if (x[1]<-10)
+  {
+     w[0] *= .3;
+     w[1] *= .3;
   }
   /* Higher weight if pitch is stable */
-  if (fabsf(x[0] - xp[0]) < .2) {
-    w[0] *= 2;
-    w[1] *= 1.5;
-  } else if (fabsf(x[0] - xp[0]) > .5) /* Lower if not stable */
+  if (fabsf(x[0]-xp[0])<.2)
   {
-    w[0] *= .5;
+     w[0] *= 2;
+     w[1] *= 1.5;
+  } else if (fabsf(x[0]-xp[0])>.5) /* Lower if not stable */
+  {
+     w[0] *= .5;
   }
 
   /* Lower weight for low energy */
-  if (x[1] < xp[1] - 10) {
-    w[1] *= .5;
+  if (x[1] < xp[1]-10)
+  {
+     w[1] *= .5;
   }
-  if (x[1] < xp[1] - 20) {
-    w[1] *= .5;
+  if (x[1] < xp[1]-20)
+  {
+     w[1] *= .5;
   }
 
-  // w[0] = 30;
-  // w[1] = 1;
+  //w[0] = 30;
+  //w[1] = 1;
 
   /* Square the weights because it's applied on the squared error */
   w[0] *= w[0];
   w[1] *= w[1];
+
 }
 
 /*---------------------------------------------------------------------------*\
@@ -1949,28 +2061,30 @@ void compute_weights2(const float *x, const float *xp, float *w) {
 
 \*---------------------------------------------------------------------------*/
 
-void quantise_WoE(MODEL *model, float *e, float xq[]) {
-  int i, n1;
-  float x[2];
-  float err[2];
-  float w[2];
+void quantise_WoE(MODEL *model, float *e, float xq[])
+{
+  int          i, n1;
+  float        x[2];
+  float        err[2];
+  float        w[2];
   const float *codebook1 = ge_cb[0].cb;
-  int nb_entries = ge_cb[0].m;
-  int ndim = ge_cb[0].k;
-  float Wo_min = TWO_PI / P_MAX;
-  float Wo_max = TWO_PI / P_MIN;
+  int          nb_entries = ge_cb[0].m;
+  int          ndim = ge_cb[0].k;
+  float Wo_min = TWO_PI/P_MAX;
+  float Wo_max = TWO_PI/P_MIN;
 
-  x[0] = log10f((model->Wo / PI) * 4000.0 / 50.0) / log10f(2);
-  x[1] = 10.0 * log10f(1e-4 + *e);
+  x[0] = log10f((model->Wo/PI)*4000.0/50.0)/log10f(2);
+  x[1] = 10.0*log10f(1e-4 + *e);
 
   compute_weights2(x, xq, w);
-  for (i = 0; i < ndim; i++)
-    err[i] = x[i] - ge_coeff[i] * xq[i];
+  for (i=0;i<ndim;i++)
+    err[i] = x[i]-ge_coeff[i]*xq[i];
   n1 = find_nearest_weighted(codebook1, nb_entries, err, w, ndim);
 
-  for (i = 0; i < ndim; i++) {
-    xq[i] = ge_coeff[i] * xq[i] + codebook1[ndim * n1 + i];
-    err[i] -= codebook1[ndim * n1 + i];
+  for (i=0;i<ndim;i++)
+  {
+    xq[i] = ge_coeff[i]*xq[i] + codebook1[ndim*n1+i];
+    err[i] -= codebook1[ndim*n1+i];
   }
 
   /*
@@ -1979,19 +2093,17 @@ void quantise_WoE(MODEL *model, float *e, float xq[]) {
     Wo = (2^x)*(PI*50)/4000;
   */
 
-  model->Wo = powf(2.0, xq[0]) * (PI * 50.0) / 4000.0;
+  model->Wo = powf(2.0, xq[0])*(PI*50.0)/4000.0;
 
   /* bit errors can make us go out of range leading to all sorts of
      probs like seg faults */
 
-  if (model->Wo > Wo_max)
-    model->Wo = Wo_max;
-  if (model->Wo < Wo_min)
-    model->Wo = Wo_min;
+  if (model->Wo > Wo_max) model->Wo = Wo_max;
+  if (model->Wo < Wo_min) model->Wo = Wo_min;
 
-  model->L = PI / model->Wo; /* if we quantise Wo re-compute L */
+  model->L  = PI/model->Wo; /* if we quantise Wo re-compute L */
 
-  *e = powf(10.0, xq[1] / 10.0);
+  *e = powf(10.0, xq[1]/10.0);
 }
 
 /*---------------------------------------------------------------------------*\
@@ -2005,36 +2117,38 @@ void quantise_WoE(MODEL *model, float *e, float xq[]) {
 
 \*---------------------------------------------------------------------------*/
 
-int encode_WoE(MODEL *model, float e, float xq[]) {
-  int i, n1;
-  float x[2];
-  float err[2];
-  float w[2];
+int encode_WoE(MODEL *model, float e, float xq[])
+{
+  int          i, n1;
+  float        x[2];
+  float        err[2];
+  float        w[2];
   const float *codebook1 = ge_cb[0].cb;
-  int nb_entries = ge_cb[0].m;
-  int ndim = ge_cb[0].k;
+  int          nb_entries = ge_cb[0].m;
+  int          ndim = ge_cb[0].k;
 
-  assert((1 << WO_E_BITS) == nb_entries);
+  assert((1<<WO_E_BITS) == nb_entries);
 
-  if (e < 0.0)
-    e = 0; /* occasional small negative energies due LPC round off I guess */
+  if (e < 0.0) e = 0;  /* occasional small negative energies due LPC round off I guess */
 
-  x[0] = log10f((model->Wo / PI) * 4000.0 / 50.0) / log10f(2);
-  x[1] = 10.0 * log10f(1e-4 + e);
+  x[0] = log10f((model->Wo/PI)*4000.0/50.0)/log10f(2);
+  x[1] = 10.0*log10f(1e-4 + e);
 
   compute_weights2(x, xq, w);
-  for (i = 0; i < ndim; i++)
-    err[i] = x[i] - ge_coeff[i] * xq[i];
+  for (i=0;i<ndim;i++)
+    err[i] = x[i]-ge_coeff[i]*xq[i];
   n1 = find_nearest_weighted(codebook1, nb_entries, err, w, ndim);
 
-  for (i = 0; i < ndim; i++) {
-    xq[i] = ge_coeff[i] * xq[i] + codebook1[ndim * n1 + i];
-    err[i] -= codebook1[ndim * n1 + i];
+  for (i=0;i<ndim;i++)
+  {
+    xq[i] = ge_coeff[i]*xq[i] + codebook1[ndim*n1+i];
+    err[i] -= codebook1[ndim*n1+i];
   }
 
-  // printf("enc: %f %f (%f)(%f) \n", xq[0], xq[1], e, 10.0*log10(1e-4 + e));
+  //printf("enc: %f %f (%f)(%f) \n", xq[0], xq[1], e, 10.0*log10(1e-4 + e));
   return n1;
 }
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -2048,29 +2162,30 @@ int encode_WoE(MODEL *model, float e, float xq[]) {
 
 \*---------------------------------------------------------------------------*/
 
-void decode_WoE(MODEL *model, float *e, float xq[], int n1) {
-  int i;
+void decode_WoE(MODEL *model, float *e, float xq[], int n1)
+{
+  int          i;
   const float *codebook1 = ge_cb[0].cb;
-  int ndim = ge_cb[0].k;
-  float Wo_min = TWO_PI / P_MAX;
-  float Wo_max = TWO_PI / P_MIN;
+  int          ndim = ge_cb[0].k;
+  float Wo_min = TWO_PI/P_MAX;
+  float Wo_max = TWO_PI/P_MIN;
 
-  for (i = 0; i < ndim; i++) {
-    xq[i] = ge_coeff[i] * xq[i] + codebook1[ndim * n1 + i];
+  for (i=0;i<ndim;i++)
+  {
+    xq[i] = ge_coeff[i]*xq[i] + codebook1[ndim*n1+i];
   }
 
-  // printf("dec: %f %f\n", xq[0], xq[1]);
-  model->Wo = powf(2.0, xq[0]) * (PI * 50.0) / 4000.0;
+  //printf("dec: %f %f\n", xq[0], xq[1]);
+  model->Wo = powf(2.0, xq[0])*(PI*50.0)/4000.0;
 
   /* bit errors can make us go out of range leading to all sorts of
      probs like seg faults */
 
-  if (model->Wo > Wo_max)
-    model->Wo = Wo_max;
-  if (model->Wo < Wo_min)
-    model->Wo = Wo_min;
+  if (model->Wo > Wo_max) model->Wo = Wo_max;
+  if (model->Wo < Wo_min) model->Wo = Wo_min;
 
-  model->L = PI / model->Wo; /* if we quantise Wo re-compute L */
+  model->L  = PI/model->Wo; /* if we quantise Wo re-compute L */
 
-  *e = powf(10.0, xq[1] / 10.0);
+  *e = powf(10.0, xq[1]/10.0);
 }
+

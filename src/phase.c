@@ -25,17 +25,18 @@
   along with this program; if not,see <http://www.gnu.org/licenses/>.
 */
 
-#include "phase.h"
-#include "comp.h"
 #include "defines.h"
+#include "phase.h"
 #include "kiss_fft.h"
+#include "comp.h"
 #include "sine.h"
 
 #include <assert.h>
 #include <ctype.h>
 #include <math.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+
 
 /*---------------------------------------------------------------------------*\
 
@@ -128,65 +129,71 @@
 \*---------------------------------------------------------------------------*/
 
 void phase_synth_zero_order(
-    kiss_fft_cfg fft_fwd_cfg, MODEL *model,
-    float *ex_phase, /* excitation phase of fundamental */
-    COMP A[]) {
-  int m, b;
-  float phi_, new_phi, r;
-  COMP Ex[MAX_AMP + 1]; /* excitation samples */
-  COMP A_[MAX_AMP + 1]; /* synthesised harmonic samples */
-  COMP H[MAX_AMP + 1];  /* LPC freq domain samples */
+    kiss_fft_cfg fft_fwd_cfg,
+    MODEL *model,
+    float *ex_phase,            /* excitation phase of fundamental */
+    COMP   A[]
+)
+{
+    int   m, b;
+    float phi_, new_phi, r;
+    COMP  Ex[MAX_AMP+1];	  /* excitation samples */
+    COMP  A_[MAX_AMP+1];	  /* synthesised harmonic samples */
+    COMP  H[MAX_AMP+1];           /* LPC freq domain samples */
 
-  r = TWO_PI / (FFT_ENC);
+    r = TWO_PI/(FFT_ENC);
 
-  /* Sample phase at harmonics */
+    /* Sample phase at harmonics */
 
-  for (m = 1; m <= model->L; m++) {
-    b = (int)(m * model->Wo / r + 0.5);
-    phi_ = -atan2f(A[b].imag, A[b].real);
-    H[m].real = cosf(phi_);
-    H[m].imag = sinf(phi_);
-  }
-
-  /*
-     Update excitation fundamental phase track, this sets the position
-     of each pitch pulse during voiced speech.  After much experiment
-     I found that using just this frame's Wo improved quality for UV
-     sounds compared to interpolating two frames Wo like this:
-
-     ex_phase[0] += (*prev_Wo+model->Wo)*N/2;
-  */
-
-  ex_phase[0] += (model->Wo) * N;
-  ex_phase[0] -= TWO_PI * floorf(ex_phase[0] / TWO_PI + 0.5);
-
-  for (m = 1; m <= model->L; m++) {
-
-    /* generate excitation */
-
-    if (model->voiced) {
-
-      Ex[m].real = cosf(ex_phase[0] * m);
-      Ex[m].imag = sinf(ex_phase[0] * m);
-    } else {
-
-      /* When a few samples were tested I found that LPC filter
-         phase is not needed in the unvoiced case, but no harm in
-         keeping it.
-      */
-      float phi = TWO_PI * (float)codec2_rand() / CODEC2_RAND_MAX;
-      Ex[m].real = cosf(phi);
-      Ex[m].imag = sinf(phi);
+    for(m=1; m<=model->L; m++) {
+        b = (int)(m*model->Wo/r + 0.5);
+        phi_ = -atan2f(A[b].imag, A[b].real);
+        H[m].real = cosf(phi_);
+        H[m].imag = sinf(phi_);
     }
 
-    /* filter using LPC filter */
+    /*
+       Update excitation fundamental phase track, this sets the position
+       of each pitch pulse during voiced speech.  After much experiment
+       I found that using just this frame's Wo improved quality for UV
+       sounds compared to interpolating two frames Wo like this:
 
-    A_[m].real = H[m].real * Ex[m].real - H[m].imag * Ex[m].imag;
-    A_[m].imag = H[m].imag * Ex[m].real + H[m].real * Ex[m].imag;
+       ex_phase[0] += (*prev_Wo+model->Wo)*N/2;
+    */
 
-    /* modify sinusoidal phase */
+    ex_phase[0] += (model->Wo)*N;
+    ex_phase[0] -= TWO_PI*floorf(ex_phase[0]/TWO_PI + 0.5);
 
-    new_phi = atan2f(A_[m].imag, A_[m].real + 1E-12);
-    model->phi[m] = new_phi;
-  }
+    for(m=1; m<=model->L; m++) {
+
+        /* generate excitation */
+
+        if (model->voiced) {
+
+            Ex[m].real = cosf(ex_phase[0]*m);
+            Ex[m].imag = sinf(ex_phase[0]*m);
+        }
+        else {
+
+            /* When a few samples were tested I found that LPC filter
+               phase is not needed in the unvoiced case, but no harm in
+               keeping it.
+            */
+            float phi = TWO_PI*(float)codec2_rand()/CODEC2_RAND_MAX;
+            Ex[m].real = cosf(phi);
+            Ex[m].imag = sinf(phi);
+        }
+
+        /* filter using LPC filter */
+
+        A_[m].real = H[m].real*Ex[m].real - H[m].imag*Ex[m].imag;
+        A_[m].imag = H[m].imag*Ex[m].real + H[m].real*Ex[m].imag;
+
+        /* modify sinusoidal phase */
+
+        new_phi = atan2f(A_[m].imag, A_[m].real+1E-12);
+        model->phi[m] = new_phi;
+    }
+
 }
+

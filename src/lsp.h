@@ -31,6 +31,6 @@
 #ifndef __LSP__
 #define __LSP__
 
-int lpc_to_lsp(float *a, int lpcrdr, float *freq, int nb, float delta);
+int lpc_to_lsp (float *a, int lpcrdr, float *freq, int nb, float delta);
 void lsp_to_lpc(float *freq, float *ak, int lpcrdr);
 #endif
