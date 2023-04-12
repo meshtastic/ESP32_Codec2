@@ -27,11 +27,11 @@
 */
 
 #ifdef __cplusplus
-  extern "C" {
+extern "C" {
 #endif
 
 #ifndef __CODEC2__
-#define  __CODEC2__
+#define __CODEC2__
 
 #define CODEC2_MODE_3200 0
 #define CODEC2_MODE_2400 1
@@ -39,22 +39,26 @@
 #define CODEC2_MODE_1400 3
 #define CODEC2_MODE_1300 4
 #define CODEC2_MODE_1200 5
-#define CODEC2_MODE_700  6
+#define CODEC2_MODE_700 6
 #define CODEC2_MODE_700B 7
 
 struct CODEC2;
 
-struct CODEC2 *  codec2_create(int mode);
+struct CODEC2 *codec2_create(int mode);
 void codec2_destroy(struct CODEC2 *codec2_state);
-void codec2_encode(struct CODEC2 *codec2_state, unsigned char * bits, short speech_in[]);
-void codec2_decode(struct CODEC2 *codec2_state, short speech_out[], const unsigned char *bits);
-void codec2_decode_ber(struct CODEC2 *codec2_state, short speech_out[], const unsigned char *bits, float ber_est);
-int  codec2_samples_per_frame(struct CODEC2 *codec2_state);
-int  codec2_bits_per_frame(struct CODEC2 *codec2_state);
+void codec2_encode(struct CODEC2 *codec2_state, unsigned char *bits,
+                   short speech_in[]);
+void codec2_decode(struct CODEC2 *codec2_state, short speech_out[],
+                   const unsigned char *bits);
+void codec2_decode_ber(struct CODEC2 *codec2_state, short speech_out[],
+                       const unsigned char *bits, float ber_est);
+int codec2_samples_per_frame(struct CODEC2 *codec2_state);
+int codec2_bits_per_frame(struct CODEC2 *codec2_state);
 
-void codec2_set_lpc_post_filter(struct CODEC2 *codec2_state, int enable, int bass_boost, float beta, float gamma);
-int  codec2_get_spare_bit_index(struct CODEC2 *codec2_state);
-int  codec2_rebuild_spare_bit(struct CODEC2 *codec2_state, int unpacked_bits[]);
+void codec2_set_lpc_post_filter(struct CODEC2 *codec2_state, int enable,
+                                int bass_boost, float beta, float gamma);
+int codec2_get_spare_bit_index(struct CODEC2 *codec2_state);
+int codec2_rebuild_spare_bit(struct CODEC2 *codec2_state, int unpacked_bits[]);
 void codec2_set_natural_or_gray(struct CODEC2 *codec2_state, int gray);
 void codec2_set_softdec(struct CODEC2 *c2, float *softdec);
 
@@ -63,4 +67,3 @@ void codec2_set_softdec(struct CODEC2 *c2, float *softdec);
 #ifdef __cplusplus
 }
 #endif
-

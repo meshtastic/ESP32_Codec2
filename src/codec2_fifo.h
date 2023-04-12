@@ -46,12 +46,12 @@ int fifo_read(struct FIFO *fifo, short data[], int n);
 /*!
  * Return the number of bytes stored in the FIFO.
  */
-int fifo_used(const struct FIFO * const fifo);
+int fifo_used(const struct FIFO *const fifo);
 
 /*!
  * Return the space available in the FIFO.
  */
-int fifo_free(const struct FIFO * const fifo);
+int fifo_free(const struct FIFO *const fifo);
 
 #ifdef __cplusplus
 }

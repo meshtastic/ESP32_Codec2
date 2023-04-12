@@ -32,7 +32,7 @@
 
 void *nlp_create(int m);
 void nlp_destroy(void *nlp_state);
-float nlp(void *nlp_state, float Sn[], int n, int pmin, int pmax,
-	  float *pitch, COMP Sw[], COMP W[], float *prev_Wo);
+float nlp(void *nlp_state, float Sn[], int n, int pmin, int pmax, float *pitch,
+          COMP Sw[], COMP W[], float *prev_Wo);
 
 #endif

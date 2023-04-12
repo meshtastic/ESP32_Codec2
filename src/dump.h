@@ -26,10 +26,10 @@
 #ifndef __DUMP__
 #define __DUMP__
 
-#include "defines.h"
-#include "comp.h"
-#include "kiss_fft.h"
 #include "codec2_internal.h"
+#include "comp.h"
+#include "defines.h"
+#include "kiss_fft.h"
 
 void dump_on(char filename_prefix[]);
 void dump_off();

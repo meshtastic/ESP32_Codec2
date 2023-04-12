@@ -29,115 +29,110 @@
   along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include "codec2_fifo.h"
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 struct FIFO {
-    short *buf;
-    short *pin;
-    short *pout;
-    int    nshort;
+  short *buf;
+  short *pin;
+  short *pout;
+  int nshort;
 };
 
 struct FIFO *fifo_create(int nshort) {
-    struct FIFO *fifo;
+  struct FIFO *fifo;
 
-    fifo = (struct FIFO *)malloc(sizeof(struct FIFO));
-    assert(fifo != NULL);
+  fifo = (struct FIFO *)malloc(sizeof(struct FIFO));
+  assert(fifo != NULL);
 
-    fifo->buf = (short*)malloc(sizeof(short)*nshort);
-    assert(fifo->buf != NULL);
-    fifo->pin = fifo->buf;
-    fifo->pout = fifo->buf;
-    fifo->nshort = nshort;
+  fifo->buf = (short *)malloc(sizeof(short) * nshort);
+  assert(fifo->buf != NULL);
+  fifo->pin = fifo->buf;
+  fifo->pout = fifo->buf;
+  fifo->nshort = nshort;
 
-    return fifo;
+  return fifo;
 }
 
 void fifo_destroy(struct FIFO *fifo) {
-    assert(fifo != NULL);
-    free(fifo->buf);
-    free(fifo);
+  assert(fifo != NULL);
+  free(fifo->buf);
+  free(fifo);
 }
 
 int fifo_write(struct FIFO *fifo, short data[], int n) {
-    int            i;
-    short         *pdata;
-    short         *pin = fifo->pin;
+  int i;
+  short *pdata;
+  short *pin = fifo->pin;
 
-    assert(fifo != NULL);
-    assert(data != NULL);
+  assert(fifo != NULL);
+  assert(data != NULL);
 
-    if (n > fifo_free(fifo)) {
-	return -1;
+  if (n > fifo_free(fifo)) {
+    return -1;
+  } else {
+
+    /* This could be made more efficient with block copies
+       using memcpy */
+
+    pdata = data;
+    for (i = 0; i < n; i++) {
+      *pin++ = *pdata++;
+      if (pin == (fifo->buf + fifo->nshort))
+        pin = fifo->buf;
     }
-    else {
+    fifo->pin = pin;
+  }
 
-	/* This could be made more efficient with block copies
-	   using memcpy */
-
-	pdata = data;
-	for(i=0; i<n; i++) {
-	    *pin++ = *pdata++;
-	    if (pin == (fifo->buf + fifo->nshort))
-		pin = fifo->buf;
-	}
-	fifo->pin = pin;
-    }
-
-    return 0;
+  return 0;
 }
 
-int fifo_read(struct FIFO *fifo, short data[], int n)
-{
-    int            i;
-    short         *pdata;
-    short         *pout = fifo->pout;
+int fifo_read(struct FIFO *fifo, short data[], int n) {
+  int i;
+  short *pdata;
+  short *pout = fifo->pout;
 
-    assert(fifo != NULL);
-    assert(data != NULL);
+  assert(fifo != NULL);
+  assert(data != NULL);
 
-    if (n > fifo_used(fifo)) {
-	return -1;
+  if (n > fifo_used(fifo)) {
+    return -1;
+  } else {
+
+    /* This could be made more efficient with block copies
+       using memcpy */
+
+    pdata = data;
+    for (i = 0; i < n; i++) {
+      *pdata++ = *pout++;
+      if (pout == (fifo->buf + fifo->nshort))
+        pout = fifo->buf;
     }
-    else {
+    fifo->pout = pout;
+  }
 
-	/* This could be made more efficient with block copies
-	   using memcpy */
-
-	pdata = data;
-	for(i=0; i<n; i++) {
-	    *pdata++ = *pout++;
-	    if (pout == (fifo->buf + fifo->nshort))
-		pout = fifo->buf;
-	}
-	fifo->pout = pout;
-    }
-
-    return 0;
+  return 0;
 }
 
-int fifo_used(const struct FIFO * const fifo)
-{
-    short         *pin = fifo->pin;
-    short         *pout = fifo->pout;
-    unsigned int   used;
+int fifo_used(const struct FIFO *const fifo) {
+  short *pin = fifo->pin;
+  short *pout = fifo->pout;
+  unsigned int used;
 
-    assert(fifo != NULL);
-    if (pin >= pout)
-        used = pin - pout;
-    else
-        used = fifo->nshort + (unsigned int)(pin - pout);
+  assert(fifo != NULL);
+  if (pin >= pout)
+    used = pin - pout;
+  else
+    used = fifo->nshort + (unsigned int)(pin - pout);
 
-    return used;
+  return used;
 }
 
-int fifo_free(const struct FIFO * const fifo)
-{
-    // available storage is one less than nshort as prd == pwr
-    // is reserved for empty rather than full
+int fifo_free(const struct FIFO *const fifo) {
+  // available storage is one less than nshort as prd == pwr
+  // is reserved for empty rather than full
 
-    return fifo->nshort - fifo_used(fifo) - 1;
+  return fifo->nshort - fifo_used(fifo) - 1;
 }

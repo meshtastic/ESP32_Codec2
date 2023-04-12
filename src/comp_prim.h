@@ -34,59 +34,53 @@
 
 \*---------------------------------------------------------------------------*/
 
-inline static COMP cneg(COMP a)
-{
-    COMP res;
+inline static COMP cneg(COMP a) {
+  COMP res;
 
-    res.real = -a.real;
-    res.imag = -a.imag;
+  res.real = -a.real;
+  res.imag = -a.imag;
 
-    return res;
+  return res;
 }
 
-inline static COMP cconj(COMP a)
-{
-    COMP res;
+inline static COMP cconj(COMP a) {
+  COMP res;
 
-    res.real = a.real;
-    res.imag = -a.imag;
+  res.real = a.real;
+  res.imag = -a.imag;
 
-    return res;
+  return res;
 }
 
-inline static COMP cmult(COMP a, COMP b)
-{
-    COMP res;
+inline static COMP cmult(COMP a, COMP b) {
+  COMP res;
 
-    res.real = a.real*b.real - a.imag*b.imag;
-    res.imag = a.real*b.imag + a.imag*b.real;
+  res.real = a.real * b.real - a.imag * b.imag;
+  res.imag = a.real * b.imag + a.imag * b.real;
 
-    return res;
+  return res;
 }
 
-inline static COMP fcmult(float a, COMP b)
-{
-    COMP res;
+inline static COMP fcmult(float a, COMP b) {
+  COMP res;
 
-    res.real = a*b.real;
-    res.imag = a*b.imag;
+  res.real = a * b.real;
+  res.imag = a * b.imag;
 
-    return res;
+  return res;
 }
 
-inline static COMP cadd(COMP a, COMP b)
-{
-    COMP res;
+inline static COMP cadd(COMP a, COMP b) {
+  COMP res;
 
-    res.real = a.real + b.real;
-    res.imag = a.imag + b.imag;
+  res.real = a.real + b.real;
+  res.imag = a.imag + b.imag;
 
-    return res;
+  return res;
 }
 
-inline static float cabsolute(COMP a)
-{
-    return sqrtf(powf(a.real, 2.0) + powf(a.imag, 2.0));
+inline static float cabsolute(COMP a) {
+  return sqrtf(powf(a.real, 2.0) + powf(a.imag, 2.0));
 }
 
 #endif
